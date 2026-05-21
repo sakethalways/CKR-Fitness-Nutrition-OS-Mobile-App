@@ -17,9 +17,9 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Text } from "@/components/Text";
-import { Avatar } from "@/components/Avatar";
 import { Pressable } from "@/components/Pressable";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
+import { Logo } from "@/components/Logo";
 import { useAuth } from "@/store/auth";
 import { computeAdminStats, useData } from "@/store/data";
 import { useNotifications } from "@/store/notifications";
@@ -83,7 +83,7 @@ export default function Overview() {
             className="flex-row items-center justify-between mt-2 mb-6"
           >
             <View className="flex-row items-center flex-1">
-              <Avatar initials={user.admin.initials} size={40} tone="lime" />
+              <Logo size={44} animate={false} />
               <View className="ml-3">
                 <Text variant="caption" className="text-lime">
                   ADMIN

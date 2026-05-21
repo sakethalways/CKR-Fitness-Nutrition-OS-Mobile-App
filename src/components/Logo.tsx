@@ -1,11 +1,17 @@
 import React from "react";
-import { View } from "react-native";
+import { View, Image } from "react-native";
 import { MotiView } from "moti";
-import { Text } from "./Text";
 
-type Props = { size?: number; animate?: boolean };
+const LOGO_SOURCE = require("../../assets/logo.png");
 
-export function Logo({ size = 56, animate = true }: Props) {
+type Props = {
+  size?: number;
+  animate?: boolean;
+  rounded?: boolean;
+};
+
+export function Logo({ size = 56, animate = true, rounded = true }: Props) {
+  const radius = rounded ? size * 0.22 : 0;
   return (
     <View className="items-center">
       <MotiView
@@ -15,26 +21,20 @@ export function Logo({ size = 56, animate = true }: Props) {
         style={{
           width: size,
           height: size,
-          borderRadius: size * 0.28,
-          backgroundColor: "#C6F432",
-          alignItems: "center",
-          justifyContent: "center",
+          borderRadius: radius,
+          overflow: "hidden",
+          backgroundColor: "#000",
           shadowColor: "#C6F432",
-          shadowOpacity: 0.45,
+          shadowOpacity: 0.25,
           shadowRadius: 24,
           shadowOffset: { width: 0, height: 0 }
         }}
       >
-        <Text
-          style={{
-            fontFamily: "Inter_700Bold",
-            fontSize: size * 0.42,
-            color: "#0A0B0D",
-            letterSpacing: -1
-          }}
-        >
-          C
-        </Text>
+        <Image
+          source={LOGO_SOURCE}
+          style={{ width: size, height: size }}
+          resizeMode="cover"
+        />
       </MotiView>
     </View>
   );

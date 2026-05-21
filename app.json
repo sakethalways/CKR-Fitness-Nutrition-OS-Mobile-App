@@ -7,9 +7,11 @@
     "scheme": "ckrnutrition",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ckrfitness.nutritionos",
+      "icon": "./assets/icon.png",
       "infoPlist": {
         "UIBackgroundModes": []
       }
@@ -17,6 +19,7 @@
     "android": {
       "package": "com.ckrfitness.nutritionos",
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0A0B0D"
       },
       "googleServicesFile": "./google-services.json"
@@ -33,13 +36,14 @@
         {
           "backgroundColor": "#0A0B0D",
           "image": "./assets/splash.png",
-          "imageWidth": 200,
+          "imageWidth": 220,
           "resizeMode": "contain"
         }
       ],
       [
         "expo-notifications",
         {
+          "icon": "./assets/notification-icon.png",
           "color": "#C6F432"
         }
       ]

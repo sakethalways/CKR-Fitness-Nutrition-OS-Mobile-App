@@ -76,16 +76,13 @@ export default function LoginScreen() {
       >
         <View className="flex-1 px-6 justify-between pt-16 pb-8">
           <View className="items-center">
-            <Logo size={48} />
+            <Logo size={104} />
             <MotiView
               from={{ opacity: 0, translateY: 8 }}
               animate={{ opacity: 1, translateY: 0 }}
               transition={{ type: "timing", duration: 400, delay: 150 }}
-              className="items-center mt-4"
+              className="items-center mt-5"
             >
-              <Text variant="caption" className="text-lime mb-1">
-                CKR FITNESS
-              </Text>
               <Text variant="display" className="text-ink text-center">
                 Nutrition OS
               </Text>
