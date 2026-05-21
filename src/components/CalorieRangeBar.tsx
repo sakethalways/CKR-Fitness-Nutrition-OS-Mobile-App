@@ -70,16 +70,28 @@ export function CalorieRangeBar({ target, low, high }: Props) {
           Pick any one from each slot — combo lands within target.
         </Text>
 
-        {/* Visual bar */}
-        <View className="mt-4 relative" style={{ height: 28 }}>
-          <View className="absolute left-0 right-0 top-3 h-2 rounded-full bg-white/[0.06]" />
+        {/* Visual bar
+            Geometry — all measured from container top:
+              container height : 32
+              track            : top 14, height 8  (center at y=18)
+              range fill (lime): top 14, height 8  (overlays track)
+              target marker    : 2px vertical line spanning y=4 → y=28
+                                 (4px above bar top, 4px below bar bottom)
+                                 + 8x8 diamond rotated 45° centered at y=18
+            This keeps the white target marker visually centered on the lime
+            bar rather than floating above it. */}
+        <View className="mt-4 relative" style={{ height: 32 }}>
+          <View
+            className="absolute left-0 right-0 rounded-full bg-white/[0.06]"
+            style={{ top: 14, height: 8 }}
+          />
           <MotiView
             from={{ width: "0%" as any }}
             animate={{ width: `${widthPct}%` as any }}
             transition={{ type: "spring", damping: 18, stiffness: 140, delay: 300 }}
             style={{
               position: "absolute",
-              top: 12,
+              top: 14,
               left: `${leftPct}%` as any,
               height: 8,
               borderRadius: 4,
@@ -89,38 +101,42 @@ export function CalorieRangeBar({ target, low, high }: Props) {
               shadowRadius: 8
             }}
           />
-          {/* target marker */}
+          {/* target marker — vertical line + diamond, centered ON the bar */}
           <MotiView
-            from={{ opacity: 0, translateY: -4 }}
-            animate={{ opacity: 1, translateY: 0 }}
+            from={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ type: "timing", duration: 360, delay: 600 }}
             style={{
               position: "absolute",
               left: `${targetPct}%` as any,
               top: 0,
-              transform: [{ translateX: -8 }] as any
+              bottom: 0,
+              width: 2,
+              marginLeft: -1,
+              alignItems: "center",
+              justifyContent: "center"
             }}
+            pointerEvents="none"
           >
+            {/* full-height tick line */}
             <View
               style={{
-                width: 0,
-                height: 0,
-                borderLeftWidth: 6,
-                borderRightWidth: 6,
-                borderTopWidth: 8,
-                borderLeftColor: "transparent",
-                borderRightColor: "transparent",
-                borderTopColor: "#FFFFFF",
-                alignSelf: "center"
+                position: "absolute",
+                top: 4,
+                bottom: 4,
+                left: 0,
+                right: 0,
+                backgroundColor: "#FFFFFF"
               }}
             />
+            {/* center diamond exactly on bar centerline */}
             <View
               style={{
-                width: 2,
-                height: 20,
+                width: 10,
+                height: 10,
                 backgroundColor: "#FFFFFF",
-                alignSelf: "center",
-                marginTop: 0
+                transform: [{ rotate: "45deg" }],
+                borderRadius: 1
               }}
             />
           </MotiView>

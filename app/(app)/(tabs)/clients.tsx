@@ -7,6 +7,7 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { LinearGradient } from "expo-linear-gradient";
 import { Text } from "@/components/Text";
 import { Avatar } from "@/components/Avatar";
+import { Logo } from "@/components/Logo";
 import { StatCard } from "@/components/StatCard";
 import { ClientRow } from "@/components/ClientRow";
 import { Button } from "@/components/Button";
@@ -18,6 +19,21 @@ import { computeTrainerStats, computeAdminStats } from "@/store/data";
 import { colors } from "@/theme/tokens";
 
 type AdminTab = "active" | "completed";
+
+const greetingForNow = (): string => {
+  const h = new Date().getHours();
+  if (h < 12) return "GOOD MORNING";
+  if (h < 17) return "GOOD AFTERNOON";
+  if (h < 21) return "GOOD EVENING";
+  return "WORKING LATE";
+};
+
+const todayLabel = (): string => {
+  const d = new Date();
+  const day = d.toLocaleDateString("en-US", { weekday: "long" });
+  const month = d.toLocaleDateString("en-US", { month: "short" });
+  return `${day} · ${month} ${d.getDate()}`;
+};
 
 export default function Clients() {
   const user = useAuth((s) => s.user)!;
@@ -82,27 +98,41 @@ export default function Clients() {
             transition={{ type: "timing", duration: 280 }}
             className="flex-row items-center mt-2 mb-5"
           >
-            <Avatar
-              initials={
-                trainerData?.initials ??
-                (user.role === "admin"
-                  ? user.admin.initials
-                  : user.trainer.initials)
-              }
-              imageUri={trainerData?.avatarUri}
-              size={40}
-              tone="lime"
-            />
-            <View className="ml-3 flex-1">
-              <Text variant="caption" className="text-ink-3">
-                {isAdmin ? "ALL CLIENTS" : "MY CLIENTS"}
-              </Text>
-              <Text variant="h2" className="text-ink">
-                {isAdmin
-                  ? "Across team"
-                  : `Hi, ${(trainerData?.name ?? user.trainer.name).split(" ")[0]}`}
-              </Text>
-            </View>
+            {isAdmin ? (
+              <>
+                <Logo size={48} animate={false} />
+                <View className="ml-3 flex-1">
+                  <Text variant="caption" className="text-lime">
+                    ALL CLIENTS
+                  </Text>
+                  <Text variant="h2" className="text-ink">
+                    Across team
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <Avatar
+                  initials={
+                    trainerData?.initials ?? user.trainer.initials
+                  }
+                  imageUri={trainerData?.avatarUri}
+                  size={64}
+                  tone="lime"
+                />
+                <View className="ml-3.5 flex-1">
+                  <Text variant="caption" className="text-ink-3">
+                    {greetingForNow()}
+                  </Text>
+                  <Text variant="h2" className="text-ink" numberOfLines={1}>
+                    Hi, {(trainerData?.name ?? user.trainer.name).split(" ")[0]}
+                  </Text>
+                  <Text variant="caption" className="text-ink-4 mt-0.5">
+                    {todayLabel()}
+                  </Text>
+                </View>
+              </>
+            )}
           </MotiView>
 
           {isAdmin && adminStats ? (
