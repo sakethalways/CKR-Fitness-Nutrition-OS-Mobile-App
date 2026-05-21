@@ -12,8 +12,12 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.ckrfitness.nutritionos",
       "icon": "./assets/icon.png",
+      "buildNumber": "1",
       "infoPlist": {
-        "UIBackgroundModes": []
+        "UIBackgroundModes": ["remote-notification"],
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Allow CKR Fitness to access your camera so you can take a profile picture.",
+        "NSPhotoLibraryUsageDescription": "Allow CKR Fitness to access your photos so you can choose a profile picture."
       }
     },
     "android": {
