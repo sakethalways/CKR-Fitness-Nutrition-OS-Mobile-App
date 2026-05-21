@@ -25,6 +25,7 @@ import { Notification, NotificationKind } from "@/data/types";
 import { timeAgo } from "@/lib/format";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { routeForNotification } from "@/lib/notificationRouting";
 
 const iconForKind: Record<NotificationKind, any> = {
   new_client: UserPlus,
@@ -126,19 +127,6 @@ export default function Notifications() {
         }
       ]
     );
-  };
-
-  // Smart routing — kind-aware so each notification lands on the screen
-  // where the admin can actually act on it.
-  const routeForNotification = (n: Notification): string | null => {
-    const goPlan =
-      (n.kind === "plan_change_request" ||
-        n.kind === "new_rating" ||
-        n.kind === "admin_changed_plan") &&
-      n.payload.planId;
-    if (goPlan) return `/(app)/plan-detail?planId=${n.payload.planId}`;
-    if (n.payload.clientId) return `/(app)/client/${n.payload.clientId}`;
-    return null;
   };
 
   const openTarget = (n: Notification) => {

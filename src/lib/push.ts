@@ -183,6 +183,27 @@ export const subscribeNotificationTaps = (
 };
 
 /**
+ * Cold-start support: when a tap on a push notification opens the app from
+ * a fully closed state, the live listener may have missed the event. This
+ * helper returns the data of the notification that opened the app, or null.
+ *
+ * Call it once on app mount AFTER the router is ready, and route based on
+ * the data exactly like a normal tap.
+ */
+export const getLastNotificationResponseData = async (): Promise<
+  Record<string, any> | null
+> => {
+  const N = ensureNotifications();
+  if (!N) return null;
+  try {
+    const resp = await N.getLastNotificationResponseAsync();
+    return resp?.notification?.request?.content?.data ?? null;
+  } catch {
+    return null;
+  }
+};
+
+/**
  * Fire a foreground in-app banner. Only used when this device has NO push
  * token registered (Expo Go, permission denied, no EAS projectId). When a
  * token is registered, the server's Expo push will already display a

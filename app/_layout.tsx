@@ -20,8 +20,13 @@ import { useLibrary } from "@/store/library";
 import {
   configurePushAsync,
   fireLocalNotification,
-  subscribeNotificationTaps
+  subscribeNotificationTaps,
+  getLastNotificationResponseData
 } from "@/lib/push";
+import {
+  routeFromPushData,
+  FALLBACK_NOTIFICATIONS_ROUTE
+} from "@/lib/notificationRouting";
 import { supabaseInitError, pingSupabase } from "@/lib/supabase";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
@@ -96,17 +101,48 @@ export default function RootLayout() {
     if (ready) configurePushAsync().catch(() => {});
   }, [ready]);
 
-  // When a push notification is tapped, open the notifications inbox.
-  // Listener is mounted once for the whole app lifetime — the OS delivers
-  // taps that arrived while the app was closed via the same callback.
-  useEffect(() => {
-    const unsub = subscribeNotificationTaps((data) => {
+  // Notification tap → smart route. Single handler shared by:
+  //   (a) live taps (foreground/background)   — addNotificationResponseReceivedListener
+  //   (b) cold-start taps (app was killed)    — getLastNotificationResponseAsync
+  // We also mark the underlying notifications row as read so the inbox stays
+  // in sync. Routing logic is delegated to @/lib/notificationRouting so the
+  // banner tap lands on the same screen as an inbox-row tap would.
+  const handleNotificationTap = React.useCallback(
+    (data: Record<string, any> | null) => {
+      if (!data) return;
       // eslint-disable-next-line no-console
       console.log("[push] tap →", data);
-      router.push("/(app)/(tabs)/notifications");
-    });
+      const notifId = data.notificationId as string | undefined;
+      if (notifId) {
+        useNotifications.getState().markRead(notifId).catch(() => {});
+      }
+      const target =
+        routeFromPushData(data) ?? FALLBACK_NOTIFICATIONS_ROUTE;
+      router.push(target as any);
+    },
+    []
+  );
+
+  // Live listener
+  useEffect(() => {
+    const unsub = subscribeNotificationTaps(handleNotificationTap);
     return unsub;
-  }, []);
+  }, [handleNotificationTap]);
+
+  // Cold start: handle a tap that launched the app from a killed state.
+  // We wait for the user to be signed in so the route push doesn't bounce
+  // off the login screen.
+  const coldStartHandledRef = useRef(false);
+  useEffect(() => {
+    if (coldStartHandledRef.current) return;
+    if (!ready || !user) return;
+    coldStartHandledRef.current = true;
+    getLastNotificationResponseData()
+      .then((data) => {
+        if (data) handleNotificationTap(data);
+      })
+      .catch(() => {});
+  }, [ready, user, handleNotificationTap]);
 
   const lastUserId = useRef<string | null>(null);
   useEffect(() => {
