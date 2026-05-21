@@ -1,0 +1,16 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.env
+.env.local
+.env.*.local
+.DS_Store
+expo-env.d.ts
+supabase/.temp/
+
+# Push notification credentials — never commit these
+google-services.json
+GoogleService-Info.plist
+fcm-service-account.json

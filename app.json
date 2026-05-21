@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "CKR Nutrition OS",
+    "slug": "ckr-nutrition-os",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "ckrnutrition",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0A0B0D",
+      "resizeMode": "contain"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ckrfitness.nutritionos",
+      "infoPlist": {
+        "UIBackgroundModes": []
+      }
+    },
+    "android": {
+      "package": "com.ckrfitness.nutritionos",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0B0D"
+      },
+      "googleServicesFile": "./google-services.json"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "color": "#C6F432"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9b6ece7b-c030-4e78-a8fb-e4e2e3cc749c"
+      },
+      "router": {}
+    },
+    "owner": "chandrackr"
+  }
+}
