@@ -48,6 +48,12 @@
       },
       "router": {}
     },
-    "owner": "chandrackr"
+    "owner": "chandrackr",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9b6ece7b-c030-4e78-a8fb-e4e2e3cc749c"
+    }
   }
 }

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "829613458252",
+    "project_id": "ckr-nutrition-os-83e30",
+    "storage_bucket": "ckr-nutrition-os-83e30.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:829613458252:android:e7d464e911fdd7a7de85e9",
+        "android_client_info": {
+          "package_name": "com.ckrfitness.nutritionos"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDxDBV-wEpx1e-z3H36ZtK90m6kumMxyko"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -10,7 +10,12 @@ web-build/
 expo-env.d.ts
 supabase/.temp/
 
-# Push notification credentials — never commit these
-google-services.json
-GoogleService-Info.plist
+# Push notification credentials
+# google-services.json and GoogleService-Info.plist are PUBLIC config files
+# (Firebase docs explicitly say these are safe to commit). They contain
+# package-name-restricted client IDs, not secret keys. Commit them so EAS
+# Build can read them.
+#
+# fcm-service-account.json IS a real secret (private key). Never commit it —
+# it's already uploaded to EAS credentials separately.
 fcm-service-account.json
