@@ -31,7 +31,7 @@ import { useNotifications } from "@/store/notifications";
 import { useLibrary } from "@/store/library";
 import { seedMeals } from "@/data/meals";
 import { formatDate, planDayState, planDayLabel } from "@/lib/format";
-import { SLOTS, SlotType, Meal } from "@/data/types";
+import { Meal } from "@/data/types";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
 
@@ -63,7 +63,7 @@ export default function PlanDetail() {
   const [draftIds, setDraftIds] = useState<string[]>(
     plan?.selectedMealIds ?? []
   );
-  const [swapForSlot, setSwapForSlot] = useState<SlotType | null>(null);
+  const [swapForSlot, setSwapForSlot] = useState<string | null>(null);
   const [swapTargetId, setSwapTargetId] = useState<string | null>(null);
 
   if (!plan || !client) {
@@ -86,11 +86,15 @@ export default function PlanDetail() {
   );
 
   const slots = useMemo(
-    () =>
-      SLOTS.map((slot) => ({
-        slot,
-        meals: meals.filter((m) => m.slot === slot)
-      })),
+    () => {
+      const breakfast = meals.filter((m) => m.mealType === "Breakfast");
+      const lunchDinner = meals.filter((m) => m.mealType === "Lunch / Dinner");
+      return [
+        { slot: "Breakfast", meals: breakfast },
+        { slot: "Lunch", meals: lunchDinner.slice(0, Math.ceil(lunchDinner.length / 2)) },
+        { slot: "Dinner", meals: lunchDinner.slice(Math.ceil(lunchDinner.length / 2)) },
+      ].filter((s) => s.meals.length > 0);
+    },
     [meals]
   );
 
@@ -144,10 +148,12 @@ export default function PlanDetail() {
     );
     const wantsVegOnly = client.foodPref === "Veg";
     const inUse = new Set(draftIds);
+
+    const mealType = swapForSlot === "Breakfast" ? "Breakfast" : "Lunch / Dinner";
     return seedMeals.filter((m) => {
-      if (m.slot !== swapForSlot) return false;
+      if (m.mealType !== mealType) return false;
       if (inUse.has(m.id) && m.id !== swapTargetId) return false; // skip already-picked
-      if (wantsVegOnly && m.foodPref === "Non-Veg") return false;
+      if (wantsVegOnly && m.diet === "Non-Veg") return false;
       if (m.allergens.some((a) => allergenSet.has(a))) return false;
       return true;
     });
@@ -474,9 +480,8 @@ export default function PlanDetail() {
                           className="text-ink-3 mt-0.5"
                           tabular
                         >
-                          {alt.kcal} kcal · P{alt.protein} C{alt.carbs} F
-                          {alt.fat}
-                          {alt.recipeRef ? ` · ${alt.recipeRef}` : ""}
+                          {alt.calories} kcal · P{Math.round(alt.proteinG)} C{Math.round(alt.carbsG)} F
+                          {Math.round(alt.fatG)}
                         </Text>
                       </View>
                       {isCurrent ? (

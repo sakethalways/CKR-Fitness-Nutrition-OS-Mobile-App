@@ -229,10 +229,10 @@ export default function RatePlan() {
                   <View className="flex-row items-baseline justify-between mb-2">
                     <View className="flex-1 mr-2">
                       <Text variant="caption" className="text-ink-3">
-                        {m.slot.toUpperCase()}
+                        {m.mealType.toUpperCase()}
                       </Text>
                       <Text variant="h3" className="text-ink" numberOfLines={1}>
-                        {m.name}
+                        {m.mealName}
                       </Text>
                     </View>
                     <View className="items-end">

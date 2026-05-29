@@ -423,14 +423,14 @@ function TemplatePreview({
   template: MealPlanTemplate;
   onAssign: () => void;
 }) {
-  const SLOT_ORDER = ["Breakfast", "Lunch", "Dinner", "Snack"] as const;
+  const SLOT_ORDER = ["Breakfast", "Lunch / Dinner"] as const;
   const meals = template.selectedMealIds
     .map((id) => seedMeals.find((m) => m.id === id))
     .filter((m): m is NonNullable<typeof m> => Boolean(m));
 
   const bySlot = SLOT_ORDER.map((slot) => ({
     slot,
-    meals: meals.filter((m) => m.slot === slot)
+    meals: meals.filter((m) => m.mealType === slot)
   }));
 
   return (
@@ -463,15 +463,14 @@ function TemplatePreview({
                           numberOfLines={1}
                           style={{ fontFamily: "Inter_500Medium" }}
                         >
-                          {m.name}
+                          {m.mealName}
                         </Text>
                         <Text
                           variant="caption"
                           className="text-ink-3 mt-0.5"
                           tabular
                         >
-                          P{m.protein} C{m.carbs} F{m.fat}
-                          {m.recipeRef ? ` · ${m.recipeRef}` : ""}
+                          P{Math.round(m.proteinG)} C{Math.round(m.carbsG)} F{Math.round(m.fatG)}
                         </Text>
                       </View>
                       <Text
@@ -482,7 +481,7 @@ function TemplatePreview({
                           fontSize: 15
                         }}
                       >
-                        {m.kcal}
+                        {m.calories}
                       </Text>
                     </View>
                   ))
