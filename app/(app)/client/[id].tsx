@@ -1,5 +1,7 @@
 import React, { useMemo, useState } from "react";
-import { View, ScrollView, StatusBar, Alert } from "react-native";
+import { View, ScrollView, StatusBar, Alert, Linking } from "react-native";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
 import {
@@ -21,7 +23,8 @@ import {
   CircleDot,
   Eye,
   BookmarkPlus,
-  UserCog
+  UserCog,
+  Download
 } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -48,6 +51,7 @@ import {
   planDayLabel,
   formatDate
 } from "@/lib/format";
+import { buildPlanHTML } from "@/lib/exports";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
 
@@ -383,6 +387,64 @@ export default function ClientProfile() {
       haptics.warning();
       Alert.alert("Couldn't save", e?.message ?? String(e));
     }
+  };
+
+  const onDownloadPDF = async (plan: Plan) => {
+    setPlanActionsFor(null);
+    if (!plan.selectedMealIds || plan.selectedMealIds.length === 0) {
+      Alert.alert("No meals", "This plan has no meal data to export.");
+      return;
+    }
+    try {
+      const sections = [
+        { slot: "Breakfast", meals: [] },
+        { slot: "Lunch / Dinner", meals: [] }
+      ];
+      const html = buildPlanHTML(client, sections, {
+        low: plan.calorieRangeLow,
+        high: plan.calorieRangeHigh
+      });
+      const { uri } = await Print.printToFileAsync({ html });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(uri, {
+          dialogTitle: "Share plan PDF",
+          mimeType: "application/pdf",
+          UTI: "com.adobe.pdf"
+        });
+        haptics.success();
+      } else {
+        Alert.alert("PDF ready", `Saved to: ${uri}`);
+      }
+    } catch (e) {
+      haptics.warning();
+      Alert.alert("Couldn't generate PDF", String(e));
+    }
+  };
+
+  const onDeletePlan = (plan: Plan) => {
+    setPlanActionsFor(null);
+    Alert.alert(
+      "Delete this plan?",
+      `Week ${plan.weekNumber} for ${client.name}. This action cannot be undone.`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await useData.getState().deletePlan(plan.id);
+              haptics.success();
+              Alert.alert("Deleted", "Plan has been removed.");
+            } catch (e: any) {
+              haptics.warning();
+              Alert.alert("Couldn't delete", e?.message ?? String(e));
+            }
+          }
+        }
+      ]
+    );
   };
 
   const showActionsButton = (isTrainer && !isCompleted) || isAdmin;
@@ -1068,6 +1130,34 @@ export default function ClientProfile() {
               }
             />
           ) : null}
+          <ActionRow
+            icon={
+              <Download
+                size={16}
+                color={colors.info}
+                strokeWidth={2.2}
+              />
+            }
+            label="Download as PDF"
+            sub="Share plan with client"
+            onPress={() =>
+              planActionsFor && onDownloadPDF(planActionsFor)
+            }
+          />
+          <ActionRow
+            icon={
+              <Trash2
+                size={16}
+                color="#F87171"
+                strokeWidth={2.2}
+              />
+            }
+            label="Delete plan"
+            sub="Remove this plan permanently"
+            onPress={() =>
+              planActionsFor && onDeletePlan(planActionsFor)
+            }
+          />
         </View>
       </Sheet>
     </View>
