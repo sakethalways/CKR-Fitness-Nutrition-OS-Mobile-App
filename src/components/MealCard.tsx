@@ -1,7 +1,7 @@
 import React from "react";
 import { View } from "react-native";
 import { MotiView } from "moti";
-import { Star, AlertCircle, Leaf, Drumstick } from "lucide-react-native";
+import { Star, Leaf, Drumstick } from "lucide-react-native";
 import { Text } from "./Text";
 import { Meal } from "@/data/types";
 import { colors } from "@/theme/tokens";
@@ -12,7 +12,6 @@ type Props = {
 };
 
 export function MealCard({ meal, delay = 0 }: Props) {
-  const noEpisode = !meal.recipeRef;
   return (
     <MotiView
       from={{ opacity: 0, translateY: 12, scale: 0.98 }}
@@ -23,35 +22,28 @@ export function MealCard({ meal, delay = 0 }: Props) {
       <View className="flex-row items-start">
         <View className="flex-1 mr-3">
           <View className="flex-row items-center mb-1">
-            {meal.foodPref === "Veg" ? (
+            {meal.diet === "Veg" ? (
               <Leaf size={11} color={colors.success} strokeWidth={2.4} />
             ) : (
               <Drumstick size={11} color="#F97316" strokeWidth={2.4} />
             )}
             <Text variant="caption" className="text-ink-3 ml-1.5 uppercase tracking-wider">
-              {meal.foodPref}
+              {meal.diet}
             </Text>
-            {noEpisode ? (
-              <View className="flex-row items-center ml-2 px-1.5 py-0.5 rounded-md bg-warn/15 border border-warn/30">
-                <AlertCircle size={9} color={colors.warn} strokeWidth={2.6} />
-                <Text variant="caption" className="text-warn ml-1" style={{ fontSize: 10 }}>
-                  No episode yet
-                </Text>
-              </View>
-            ) : (
-              <View className="ml-2 px-1.5 py-0.5 rounded-md bg-white/[0.05] border border-line">
+            {meal.isShootPriority && (
+              <View className="ml-2 px-1.5 py-0.5 rounded-md bg-lime/15 border border-lime/30">
                 <Text
                   variant="caption"
-                  className="text-ink-2"
+                  className="text-lime"
                   style={{ fontSize: 10, fontFamily: "Inter_600SemiBold" }}
                 >
-                  {meal.recipeRef}
+                  ★ Priority
                 </Text>
               </View>
             )}
           </View>
           <Text variant="h3" className="text-ink" numberOfLines={2}>
-            {meal.name}
+            {meal.mealName}
           </Text>
         </View>
         <View className="items-end">
@@ -65,7 +57,7 @@ export function MealCard({ meal, delay = 0 }: Props) {
                 letterSpacing: -0.3
               }}
             >
-              {meal.kcal}
+              {meal.calories}
             </Text>
             <Text variant="caption" className="text-ink-3 ml-1">
               kcal
@@ -79,20 +71,19 @@ export function MealCard({ meal, delay = 0 }: Props) {
               tabular
               style={{ fontFamily: "Inter_600SemiBold" }}
             >
-              {meal.baseRating.toFixed(1)}
+              {meal.calBracket}
             </Text>
           </View>
         </View>
       </View>
 
-      {/* macros row */}
       <View
         className="flex-row mt-3 pt-3 border-t border-line"
         style={{ gap: 8 }}
       >
-        <MacroPill label="P" value={meal.protein} color="#60A5FA" />
-        <MacroPill label="C" value={meal.carbs} color="#C6F432" />
-        <MacroPill label="F" value={meal.fat} color="#FBBF24" />
+        <MacroPill label="P" value={Math.round(meal.proteinG)} color="#60A5FA" />
+        <MacroPill label="C" value={Math.round(meal.carbsG)} color="#C6F432" />
+        <MacroPill label="F" value={Math.round(meal.fatG)} color="#FBBF24" />
       </View>
     </MotiView>
   );

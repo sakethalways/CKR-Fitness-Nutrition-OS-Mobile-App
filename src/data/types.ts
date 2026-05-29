@@ -67,22 +67,29 @@ export type Client = {
   deletionRequestedAt?: string;
 };
 
-export type SlotType = "Breakfast" | "Lunch" | "Dinner" | "Snack";
-export const SLOTS: SlotType[] = ["Breakfast", "Lunch", "Dinner", "Snack"];
+export type MealType = "Breakfast" | "Lunch / Dinner";
+export const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch / Dinner"];
 
 export type Meal = {
-  id: string;
-  name: string;
-  slot: SlotType;
-  recipeRef: string | null;
-  kcal: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  foodPref: "Veg" | "Non-Veg";
-  allergens: Allergen[];
-  clientTypeBoost: ClientType[];
-  baseRating: number;
+  id: number;
+  mealNumber: number;
+  mealName: string;
+  mealType: MealType;
+  diet: "Veg" | "Non-Veg";
+  calBracket: string;
+  isShootPriority: boolean;
+  quantities: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+  clientTags: string[];
+  allergens: string | null;
+  notes: string | null;
+  rating: number;
+  baseDescription: string | null;
+  proteinAnchor: string | null;
+  mealSection: string | null;
 };
 
 export type Plan = {

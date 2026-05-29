@@ -1,51 +1,71 @@
-import { Client, Meal, Plan, SLOTS, SlotType } from "@/data/types";
+import { Client, Meal, Plan } from "@/data/types";
 import { seedMeals } from "@/data/meals";
 
-const SLOT_SHARE: Record<SlotType, number> = {
+const SLOT_SHARE: Record<string, number> = {
   Breakfast: 0.25,
   Lunch: 0.35,
   Dinner: 0.3,
   Snack: 0.1
 };
 
-// Build a per-meal effective rating from all prior plan ratings (>=4).
-// Ratings <4 demote (per spec: "Ratings < 4 → remove from future rotation").
-// Ratings >=8 boost extra (per spec: "Ratings >= 8 → prioritize for similar client types").
-const buildEffectiveRatings = (
-  plans: Plan[],
-  client: Client
-): Record<string, { rating: number; demoted: boolean }> => {
-  const acc: Record<string, { sum: number; count: number; lowHits: number }> = {};
-
-  for (const p of plans) {
-    if (!p.ratings) continue;
-    for (const [mealId, score] of Object.entries(p.ratings)) {
-      if (!acc[mealId]) acc[mealId] = { sum: 0, count: 0, lowHits: 0 };
-      acc[mealId].sum += score;
-      acc[mealId].count += 1;
-      if (score < 4) acc[mealId].lowHits += 1;
-    }
-  }
-
-  const out: Record<string, { rating: number; demoted: boolean }> = {};
-  for (const [mealId, v] of Object.entries(acc)) {
-    const avg = v.sum / v.count;
-    out[mealId] = { rating: avg, demoted: v.lowHits >= 1 };
-  }
-  return out;
+// Bracket calorie ranges (used to find best matching variant)
+const BRACKET_RANGES: Record<string, { low: number; high: number; mid: number }> = {
+  "350–400 kcal": { low: 350, high: 400, mid: 375 },
+  "400–450 kcal": { low: 400, high: 450, mid: 425 },
+  "450–500 kcal": { low: 450, high: 500, mid: 475 },
+  "500–550 kcal": { low: 500, high: 550, mid: 525 }
 };
 
 export type GeneratedSlot = {
-  slot: SlotType;
+  slot: string;
   targetKcal: number;
-  meals: Meal[]; // 2 options
+  meals: Meal[];
 };
 
 export type GenerationResult = {
   slots: GeneratedSlot[];
-  flatMeals: Meal[]; // length 8
+  flatMeals: Meal[];
   rangeLow: number;
   rangeHigh: number;
+};
+
+const scoreMeal = (meal: Meal, client: Client): number => {
+  let score = meal.rating + (meal.baseDescription ? 1 : 0);
+
+  const typeBoosts = meal.clientTags.filter((tag) =>
+    client.clientTypes.some((ct) => ct === tag)
+  ).length;
+  score += typeBoosts * 1.5;
+
+  if (meal.isShootPriority) score += 2.0;
+
+  return score;
+};
+
+const parseAllergens = (allergenStr: string | null): Set<string> => {
+  if (!allergenStr) return new Set();
+  return new Set(allergenStr.split(",").map((a) => a.trim()));
+};
+
+const findBestBracket = (targetCal: number, meals: Meal[]): string | null => {
+  const availableBrackets = [...new Set(meals.map((m) => m.calBracket))];
+
+  const containing = availableBrackets.find((bracket) => {
+    const range = BRACKET_RANGES[bracket];
+    if (!range) return false;
+    return targetCal >= range.low && targetCal <= range.high;
+  });
+
+  if (containing) return containing;
+
+  return availableBrackets.reduce((best, bracket) => {
+    const bestRange = BRACKET_RANGES[best];
+    const currRange = BRACKET_RANGES[bracket];
+    if (!bestRange || !currRange) return best;
+    const bestDist = Math.abs(bestRange.mid - targetCal);
+    const currDist = Math.abs(currRange.mid - targetCal);
+    return currDist < bestDist ? bracket : best;
+  }, availableBrackets[0] || "400–450 kcal");
 };
 
 export const generateForClient = (
@@ -57,62 +77,59 @@ export const generateForClient = (
     client.allergens.filter((a) => a !== "None")
   );
   const wantsVegOnly = client.foodPref === "Veg";
-  const ratingsMap = buildEffectiveRatings(priorPlans, client);
 
-  // Filter pool
   const pool = seedMeals.filter((m) => {
-    if (wantsVegOnly && m.foodPref === "Non-Veg") return false;
-    if (m.allergens.some((a) => allergenSet.has(a))) return false;
+    if (wantsVegOnly && m.diet === "Non-Veg") return false;
+    const mealAllergens = parseAllergens(m.allergens);
+    if ([...allergenSet].some((a) => mealAllergens.has(a))) return false;
     return true;
   });
 
-  const score = (m: Meal): number => {
-    const r = ratingsMap[m.id];
-    let base = r ? r.rating : m.baseRating;
-    if (r?.demoted) base -= 3; // strong demote
-    const overlap = m.clientTypeBoost.filter((t) =>
-      client.clientTypes.includes(t)
-    ).length;
-    base += overlap * 1.2;
-    if (r && r.rating >= 8) base += 0.5; // prioritize-for-similar bonus
-    if (!m.recipeRef) base -= 0.3; // content gap penalty
-    return base;
-  };
+  const slots: GeneratedSlot[] = [];
+  const usedMealNumbers: Set<number> = new Set();
 
-  const slots: GeneratedSlot[] = SLOTS.map((slot) => {
-    const slotTarget = Math.round(target * SLOT_SHARE[slot]);
-    const slotMin = slotTarget * 0.78;
-    const slotMax = slotTarget * 1.22;
+  const breakfastMeals = pool.filter((m) => m.mealType === "Breakfast");
+  if (breakfastMeals.length > 0) {
+    const slotTarget = Math.round(target * SLOT_SHARE.Breakfast);
+    const bracket = findBestBracket(slotTarget, breakfastMeals);
+    const variants = breakfastMeals.filter((m) => m.calBracket === bracket)
+      .sort((a, b) => scoreMeal(b, client) - scoreMeal(a, client))
+      .slice(0, 2);
 
-    const inRange = pool.filter(
-      (m) => m.slot === slot && m.kcal >= slotMin && m.kcal <= slotMax
-    );
-    let chosen: Meal[];
-    if (inRange.length >= 2) {
-      chosen = [...inRange].sort((a, b) => score(b) - score(a)).slice(0, 2);
-    } else {
-      // Fall back: pick closest-to-target by score, regardless of range
-      chosen = pool
-        .filter((m) => m.slot === slot)
-        .sort((a, b) => {
-          const sa = score(a) - Math.abs(a.kcal - slotTarget) / 100;
-          const sb = score(b) - Math.abs(b.kcal - slotTarget) / 100;
-          return sb - sa;
-        })
-        .slice(0, 2);
-    }
+    slots.push({ slot: "Breakfast", targetKcal: slotTarget, meals: variants });
+    variants.forEach((m) => usedMealNumbers.add(m.mealNumber));
+  }
 
-    return { slot, targetKcal: slotTarget, meals: chosen };
-  });
+  const lunchDinnerMeals = pool.filter((m) => m.mealType === "Lunch / Dinner");
+  if (lunchDinnerMeals.length > 0) {
+    const slotTarget = Math.round(target * SLOT_SHARE.Lunch);
+    const bracket = findBestBracket(slotTarget, lunchDinnerMeals);
+    const variants = lunchDinnerMeals.filter((m) => m.calBracket === bracket)
+      .sort((a, b) => scoreMeal(b, client) - scoreMeal(a, client))
+      .slice(0, 2);
 
-  // Calorie range = sum of (min meal kcal) … sum of (max meal kcal) across slots
+    slots.push({ slot: "Lunch", targetKcal: slotTarget, meals: variants });
+  }
+
+  if (lunchDinnerMeals.length > 0) {
+    const slotTarget = Math.round(target * SLOT_SHARE.Dinner);
+    const bracket = findBestBracket(slotTarget, lunchDinnerMeals);
+    const variants = lunchDinnerMeals.filter(
+      (m) => m.calBracket === bracket && !usedMealNumbers.has(m.mealNumber)
+    )
+      .sort((a, b) => scoreMeal(b, client) - scoreMeal(a, client))
+      .slice(0, 2);
+
+    slots.push({ slot: "Dinner", targetKcal: slotTarget, meals: variants });
+  }
+
   let low = 0;
   let high = 0;
   for (const s of slots) {
-    const k = s.meals.map((m) => m.kcal);
-    if (k.length > 0) {
-      low += Math.min(...k);
-      high += Math.max(...k);
+    const cals = s.meals.map((m) => m.calories);
+    if (cals.length > 0) {
+      low += Math.min(...cals);
+      high += Math.max(...cals);
     }
   }
 
