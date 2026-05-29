@@ -45,6 +45,7 @@ import { useNotifications } from "@/store/notifications";
 import { useLibrary } from "@/store/library";
 import { getAdminId } from "@/lib/admin";
 import { ClientStatus, Plan } from "@/data/types";
+import { seedMeals } from "@/data/meals";
 import {
   genderLabel,
   planDayState,
