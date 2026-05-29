@@ -16,7 +16,6 @@ import { BottomBar } from "@/components/BottomBar";
 import { selectClient, selectPlan } from "@/store/data";
 import { seedMeals } from "@/data/meals";
 import { buildPlanHTML, buildWhatsAppText } from "@/lib/exports";
-import { SLOTS } from "@/data/types";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
 
@@ -41,11 +40,14 @@ export default function Approve() {
   }, [plan]);
 
   const sections = useMemo(
-    () =>
-      SLOTS.map((slot) => ({
-        slot,
-        meals: meals.filter((m) => m.slot === slot)
-      })),
+    () => {
+      const breakfast = meals.filter((m) => m.mealType === "Breakfast");
+      const lunchDinner = meals.filter((m) => m.mealType === "Lunch / Dinner");
+      return [
+        { slot: "Breakfast", meals: breakfast },
+        { slot: "Lunch / Dinner", meals: lunchDinner }
+      ].filter((s) => s.meals.length > 0);
+    },
     [meals]
   );
 

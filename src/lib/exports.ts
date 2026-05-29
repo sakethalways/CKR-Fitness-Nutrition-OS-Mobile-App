@@ -1,6 +1,6 @@
-import { Client, Meal, SlotType } from "@/data/types";
+import { Client, Meal } from "@/data/types";
 
-type Section = { slot: SlotType; meals: Meal[] };
+type Section = { slot: string; meals: Meal[] };
 
 export const buildWhatsAppText = (
   client: Client,
@@ -15,9 +15,8 @@ export const buildWhatsAppText = (
   for (const s of sections) {
     lines.push(`*${s.slot.toUpperCase()}* — pick one`);
     for (const m of s.meals) {
-      const ref = m.recipeRef ? ` (${m.recipeRef})` : "";
       lines.push(
-        `• ${m.name}${ref} — ${m.kcal} kcal · P${m.protein} C${m.carbs} F${m.fat}`
+        `• ${m.mealName} — ${m.calories} kcal · P${Math.round(m.proteinG)} C${Math.round(m.carbsG)} F${Math.round(m.fatG)}`
       );
     }
     lines.push("");
@@ -44,14 +43,13 @@ export const buildPlanHTML = (
           (m) => `
         <div class="meal">
           <div class="meal-head">
-            <div class="meal-name">${escapeHtml(m.name)}</div>
-            <div class="meal-kcal">${m.kcal} <span class="unit">kcal</span></div>
+            <div class="meal-name">${escapeHtml(m.mealName)}</div>
+            <div class="meal-kcal">${m.calories} <span class="unit">kcal</span></div>
           </div>
           <div class="meal-meta">
-            ${m.recipeRef ? `<span class="ref">${m.recipeRef}</span>` : '<span class="ref gap">No episode</span>'}
-            <span class="macro p">P ${m.protein}g</span>
-            <span class="macro c">C ${m.carbs}g</span>
-            <span class="macro f">F ${m.fat}g</span>
+            <span class="macro p">P ${Math.round(m.proteinG)}g</span>
+            <span class="macro c">C ${Math.round(m.carbsG)}g</span>
+            <span class="macro f">F ${Math.round(m.fatG)}g</span>
           </div>
         </div>
       `
