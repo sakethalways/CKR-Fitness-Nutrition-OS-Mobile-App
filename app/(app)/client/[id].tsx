@@ -396,10 +396,15 @@ export default function ClientProfile() {
       return;
     }
     try {
+      const meals = plan.selectedMealIds
+        .map((id) => seedMeals.find((m) => m.id === Number(id)))
+        .filter((m): m is NonNullable<typeof m> => Boolean(m));
+
       const sections = [
-        { slot: "Breakfast", meals: [] },
-        { slot: "Lunch / Dinner", meals: [] }
-      ];
+        { slot: "Breakfast", meals: meals.filter((m) => m.mealType === "Breakfast") },
+        { slot: "Lunch / Dinner", meals: meals.filter((m) => m.mealType === "Lunch / Dinner") }
+      ].filter((s) => s.meals.length > 0);
+
       const html = buildPlanHTML(client, sections, {
         low: plan.calorieRangeLow,
         high: plan.calorieRangeHigh

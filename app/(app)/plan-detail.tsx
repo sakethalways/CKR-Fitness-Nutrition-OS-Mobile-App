@@ -80,7 +80,7 @@ export default function PlanDetail() {
   const meals = useMemo(
     () =>
       draftIds
-        .map((id) => seedMeals.find((m) => m.id === id))
+        .map((id) => seedMeals.find((m) => m.id === Number(id)))
         .filter((m): m is Meal => Boolean(m)),
     [draftIds]
   );

@@ -101,7 +101,7 @@ export type Plan = {
   status: "active" | "past";
   avgRating: number;
   createdAt: string;
-  selectedMealIds?: string[];
+  selectedMealIds?: (string | number)[];
   ratings?: Record<string, number>;
   ratedAt?: string;
   ratedBy?: string; // trainer id

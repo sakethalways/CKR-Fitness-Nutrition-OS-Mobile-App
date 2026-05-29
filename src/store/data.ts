@@ -154,6 +154,7 @@ type DataState = {
 
   addPlan: (p: Omit<Plan, "id">) => Promise<Plan>;
   updatePlan: (id: string, patch: Partial<Plan>) => Promise<void>;
+  deletePlan: (id: string) => Promise<void>;
   saveRatings: (
     planId: string,
     ratings: Record<string, number>,
@@ -339,6 +340,17 @@ export const useData = create<DataState>((set, get) => ({
       set((s) => ({
         plans: upsertById(s.plans, planFromRow(data))
       }));
+  },
+
+  deletePlan: async (id) => {
+    const { error } = await supabase
+      .from("plans")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+    set((s) => ({
+      plans: s.plans.filter((p) => p.id !== id)
+    }));
   },
 
   saveRatings: async (planId, ratings, ratedBy) => {

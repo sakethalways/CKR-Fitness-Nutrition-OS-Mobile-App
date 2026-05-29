@@ -425,7 +425,7 @@ function TemplatePreview({
 }) {
   const SLOT_ORDER = ["Breakfast", "Lunch / Dinner"] as const;
   const meals = template.selectedMealIds
-    .map((id) => seedMeals.find((m) => m.id === id))
+    .map((id) => seedMeals.find((m) => m.id === Number(id)))
     .filter((m): m is NonNullable<typeof m> => Boolean(m));
 
   const bySlot = SLOT_ORDER.map((slot) => ({

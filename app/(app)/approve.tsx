@@ -35,7 +35,7 @@ export default function Approve() {
   const meals = useMemo(() => {
     if (!plan?.selectedMealIds) return [];
     return plan.selectedMealIds
-      .map((id) => seedMeals.find((m) => m.id === id))
+      .map((id) => seedMeals.find((m) => m.id === Number(id)))
       .filter((m): m is NonNullable<typeof m> => Boolean(m));
   }, [plan]);
 
