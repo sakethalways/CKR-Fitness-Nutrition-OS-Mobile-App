@@ -67,8 +67,8 @@ export type Client = {
   deletionRequestedAt?: string;
 };
 
-export type MealType = "Breakfast" | "Lunch / Dinner";
-export const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch / Dinner"];
+export type MealType = "Breakfast" | "Lunch / Dinner" | "Snack";
+export const MEAL_TYPES: MealType[] = ["Breakfast", "Lunch / Dinner", "Snack"];
 
 export type Meal = {
   id: number;
