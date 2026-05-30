@@ -29,15 +29,21 @@ CREATE TABLE IF NOT EXISTS meals (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Create indexes for query performance
-CREATE INDEX idx_meals_meal_type ON meals(meal_type);
-CREATE INDEX idx_meals_diet ON meals(diet);
-CREATE INDEX idx_meals_cal_bracket ON meals(cal_bracket);
-CREATE INDEX idx_meals_meal_number ON meals(meal_number);
-CREATE INDEX idx_meals_rating ON meals(rating DESC);
+-- Create indexes for query performance (if not exists)
+CREATE INDEX IF NOT EXISTS idx_meals_meal_type ON meals(meal_type);
+CREATE INDEX IF NOT EXISTS idx_meals_diet ON meals(diet);
+CREATE INDEX IF NOT EXISTS idx_meals_cal_bracket ON meals(cal_bracket);
+CREATE INDEX IF NOT EXISTS idx_meals_meal_number ON meals(meal_number);
+CREATE INDEX IF NOT EXISTS idx_meals_rating ON meals(rating DESC);
 
 -- Enable RLS for meals table
 ALTER TABLE meals ENABLE ROW LEVEL SECURITY;
+
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Admins can view all meals" ON meals;
+DROP POLICY IF EXISTS "Admins can insert meals" ON meals;
+DROP POLICY IF EXISTS "Admins can update meals" ON meals;
+DROP POLICY IF EXISTS "Admins can delete meals" ON meals;
 
 -- RLS Policies: Only admins can view/edit meals
 CREATE POLICY "Admins can view all meals" ON meals
@@ -65,6 +71,8 @@ CREATE POLICY "Admins can delete meals" ON meals
   ));
 
 -- Trigger to auto-update updated_at timestamp
+DROP TRIGGER IF EXISTS meals_update_timestamp ON meals;
+
 CREATE OR REPLACE FUNCTION update_meals_timestamp()
 RETURNS TRIGGER AS $$
 BEGIN
