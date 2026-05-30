@@ -154,7 +154,11 @@ export default function PlanDetail() {
       if (m.mealType !== mealType) return false;
       if (inUse.has(m.id) && m.id !== swapTargetId) return false; // skip already-picked
       if (wantsVegOnly && m.diet === "Non-Veg") return false;
-      if (m.allergens.some((a) => allergenSet.has(a))) return false;
+      // Check if meal allergens conflict with client allergens
+      if (m.allergens) {
+        const mealAllergens = m.allergens.split(" · ");
+        if (mealAllergens.some((a) => allergenSet.has(a))) return false;
+      }
       return true;
     });
   }, [swapForSlot, draftIds, swapTargetId, client.allergens, client.foodPref]);

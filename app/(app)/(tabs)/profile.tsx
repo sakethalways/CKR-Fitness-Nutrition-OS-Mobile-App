@@ -9,7 +9,9 @@ import {
   User2,
   ShieldCheck,
   Camera,
-  Trash2
+  Trash2,
+  ChefHat,
+  ArrowRight
 } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -247,6 +249,45 @@ export default function Profile() {
               />
             </Card>
           ) : null}
+
+          {user.role === "admin" && (
+            <MotiView
+              from={{ opacity: 0, translateY: 8 }}
+              animate={{ opacity: 1, translateY: 0 }}
+              transition={{
+                type: "spring",
+                damping: 18,
+                stiffness: 200,
+                delay: 80
+              }}
+              className="mt-4"
+            >
+              <Card>
+                <Text variant="label" className="text-ink-3 mb-3">
+                  ADMIN
+                </Text>
+                <Pressable
+                  onPress={() => router.push("/admin/meals")}
+                  scaleTo={0.97}
+                  haptic="light"
+                >
+                  <View className="flex-row items-center py-2.5">
+                    <View className="w-7 h-7 rounded-full bg-lime/10 items-center justify-center mr-3">
+                      <ChefHat size={13} color={colors.lime} strokeWidth={2.2} />
+                    </View>
+                    <Text variant="bodyMedium" className="text-ink flex-1">
+                      Meals Management
+                    </Text>
+                    <ArrowRight
+                      size={13}
+                      color={colors.ink3}
+                      strokeWidth={2.2}
+                    />
+                  </View>
+                </Pressable>
+              </Card>
+            </MotiView>
+          )}
 
           <View className="mt-4">
             <Button
