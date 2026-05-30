@@ -197,8 +197,7 @@ export default function TabsLayout() {
           title: "Profile",
           tabBarIcon: ({ color }) => (
             <User size={20} color={color} strokeWidth={2.2} />
-          ),
-          ...(isAdmin ? HIDDEN : {})
+          )
         }}
       />
     </Tabs>
