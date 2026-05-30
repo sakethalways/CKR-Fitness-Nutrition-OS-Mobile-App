@@ -4,6 +4,7 @@ import {
   Client,
   Plan,
   Trainer,
+  Meal,
   ClientStatus,
   ClientType,
   FoodPref,
@@ -12,6 +13,8 @@ import {
   Gender,
   Allergen
 } from "@/data/types";
+import { mealFromRow, mealToDb } from "@/lib/mealMapper";
+import { seedMeals } from "@/data/meals";
 
 // ===========================================================================
 // Mappers — Supabase rows (snake_case) ↔ app types (camelCase)
@@ -142,6 +145,7 @@ type DataState = {
   trainers: Trainer[];
   clients: Client[];
   plans: Plan[];
+  meals: Meal[];
   hasHydrated: boolean;
   loading: boolean;
 
@@ -161,6 +165,11 @@ type DataState = {
     ratedBy: string
   ) => Promise<void>;
 
+  addMeal: (m: Omit<Meal, "id">) => Promise<Meal>;
+  updateMeal: (id: number, patch: Partial<Meal>) => Promise<void>;
+  deleteMeal: (id: number) => Promise<void>;
+  fetchMeals: () => Promise<void>;
+
   updateTrainer: (id: string, patch: Partial<Trainer>) => Promise<void>;
 };
 
@@ -175,6 +184,7 @@ export const useData = create<DataState>((set, get) => ({
   trainers: [],
   clients: [],
   plans: [],
+  meals: [],
   hasHydrated: false,
   loading: false,
 
@@ -183,16 +193,25 @@ export const useData = create<DataState>((set, get) => ({
     set({ loading: true });
     try {
       // Initial fetch — RLS scopes results to what the caller can see
-      const [tRes, cRes, pRes] = await Promise.all([
+      const [tRes, cRes, pRes, mRes] = await Promise.all([
         supabase.from("trainers").select("*").order("created_at"),
         supabase.from("clients").select("*").order("created_at", { ascending: false }),
-        supabase.from("plans").select("*").order("created_at", { ascending: false })
+        supabase.from("plans").select("*").order("created_at", { ascending: false }),
+        supabase.from("meals").select("*").order("meal_number, cal_bracket")
       ]);
+
+      let meals = (mRes.data ?? []).map(mealFromRow);
+
+      // Fallback to seedMeals if DB is empty (first-time setup)
+      if (meals.length === 0) {
+        meals = seedMeals;
+      }
 
       set({
         trainers: (tRes.data ?? []).map(trainerFromRow),
         clients: (cRes.data ?? []).map(clientFromRow),
         plans: (pRes.data ?? []).map(planFromRow),
+        meals,
         hasHydrated: true,
         loading: false
       });
@@ -238,6 +257,18 @@ export const useData = create<DataState>((set, get) => ({
       );
       plansCh.subscribe();
       subscriptions.push(plansCh);
+
+      const mealsCh = supabase.channel(`rt-meals-${ts}`);
+      mealsCh.on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "meals" },
+        (payload) =>
+          set((s) => ({
+            meals: handlePayload(s.meals, payload, mealFromRow)
+          }))
+      );
+      mealsCh.subscribe();
+      subscriptions.push(mealsCh);
     } catch (e) {
       set({ loading: false, hasHydrated: true });
       // eslint-disable-next-line no-console
@@ -247,7 +278,7 @@ export const useData = create<DataState>((set, get) => ({
 
   dispose: async () => {
     await dispose();
-    set({ trainers: [], clients: [], plans: [], hasHydrated: false });
+    set({ trainers: [], clients: [], plans: [], meals: [], hasHydrated: false });
   },
 
   addClient: async (c) => {
@@ -372,6 +403,60 @@ export const useData = create<DataState>((set, get) => ({
       set((s) => ({
         plans: upsertById(s.plans, planFromRow(data))
       }));
+  },
+
+  addMeal: async (m) => {
+    const { data, error } = await supabase
+      .from("meals")
+      .insert(mealToDb(m))
+      .select()
+      .single();
+    if (error) throw error;
+    const meal = mealFromRow(data);
+    set((s) => ({
+      meals: upsertById(s.meals, meal)
+    }));
+    return meal;
+  },
+
+  updateMeal: async (id, patch) => {
+    const { data, error } = await supabase
+      .from("meals")
+      .update(mealToDb(patch))
+      .eq("id", id)
+      .select()
+      .single();
+    if (error) throw error;
+    if (data)
+      set((s) => ({
+        meals: upsertById(s.meals, mealFromRow(data))
+      }));
+  },
+
+  deleteMeal: async (id) => {
+    const { error } = await supabase
+      .from("meals")
+      .delete()
+      .eq("id", id);
+    if (error) throw error;
+    set((s) => ({
+      meals: s.meals.filter((m) => m.id !== id)
+    }));
+  },
+
+  fetchMeals: async () => {
+    const { data, error } = await supabase
+      .from("meals")
+      .select("*")
+      .order("meal_number")
+      .order("cal_bracket");
+    if (error) {
+      // Fallback to seedMeals if fetch fails
+      set({ meals: seedMeals });
+      return;
+    }
+    const meals = (data ?? []).map(mealFromRow);
+    set({ meals: meals.length > 0 ? meals : seedMeals });
   },
 
   updateTrainer: async (id, patch) => {
