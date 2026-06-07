@@ -23,7 +23,6 @@ import { useLibrary } from "@/store/library";
 import { useData, selectAllActiveClients } from "@/store/data";
 import { useAuth } from "@/store/auth";
 import { useNotifications } from "@/store/notifications";
-import { seedPlans } from "@/data/seed";
 import { seedMeals } from "@/data/meals";
 import { MealPlanTemplate } from "@/data/types";
 import { timeAgo, genderLabel } from "@/lib/format";

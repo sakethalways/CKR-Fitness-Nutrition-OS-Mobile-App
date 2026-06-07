@@ -30,17 +30,6 @@ export function MealCard({ meal, delay = 0 }: Props) {
             <Text variant="caption" className="text-ink-3 ml-1.5 uppercase tracking-wider">
               {meal.diet}
             </Text>
-            {meal.isShootPriority && (
-              <View className="ml-2 px-1.5 py-0.5 rounded-md bg-lime/15 border border-lime/30">
-                <Text
-                  variant="caption"
-                  className="text-lime"
-                  style={{ fontSize: 10, fontFamily: "Inter_600SemiBold" }}
-                >
-                  ★ Priority
-                </Text>
-              </View>
-            )}
           </View>
           <Text variant="h3" className="text-ink" numberOfLines={2}>
             {meal.mealName}
@@ -85,6 +74,22 @@ export function MealCard({ meal, delay = 0 }: Props) {
         <MacroPill label="C" value={Math.round(meal.carbsG)} color="#C6F432" />
         <MacroPill label="F" value={Math.round(meal.fatG)} color="#FBBF24" />
       </View>
+
+      {/* Ingredient quantities — the part the client actually cooks from. */}
+      {meal.quantities ? (
+        <View className="mt-3 pt-3 border-t border-line">
+          <Text
+            variant="caption"
+            className="text-ink-3 mb-1 uppercase tracking-wider"
+            style={{ fontSize: 9 }}
+          >
+            Quantities
+          </Text>
+          <Text variant="caption" className="text-ink-2" style={{ lineHeight: 18 }}>
+            {meal.quantities}
+          </Text>
+        </View>
+      ) : null}
     </MotiView>
   );
 }

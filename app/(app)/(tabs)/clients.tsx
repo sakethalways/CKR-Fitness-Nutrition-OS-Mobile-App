@@ -1,21 +1,22 @@
-import React, { useMemo, useState } from "react";
-import { View, ScrollView, StatusBar } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { View, FlatList, StatusBar, RefreshControl } from "react-native";
 import { router } from "expo-router";
 import { MotiView } from "moti";
-import { Plus, Users2, Archive } from "lucide-react-native";
+import { Plus, Users2, Archive, Search } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Text } from "@/components/Text";
 import { Avatar } from "@/components/Avatar";
 import { Logo } from "@/components/Logo";
+import { Input } from "@/components/Input";
 import { StatCard } from "@/components/StatCard";
 import { ClientRow } from "@/components/ClientRow";
 import { Button } from "@/components/Button";
 import { BottomBar } from "@/components/BottomBar";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { useAuth } from "@/store/auth";
-import { useData } from "@/store/data";
-import { computeTrainerStats, computeAdminStats } from "@/store/data";
+import { useData, computeTrainerStats, type AdminStats } from "@/store/data";
+import { Client } from "@/data/types";
 import { colors } from "@/theme/tokens";
 
 type AdminTab = "active" | "completed";
@@ -42,19 +43,81 @@ export default function Clients() {
 
   const trainerId = !isAdmin ? user.trainer.id : null;
   const [adminTab, setAdminTab] = useState<AdminTab>("active");
+  const [search, setSearch] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
 
   // Subscribe to the raw array (reference-stable). Filtering happens in
   // useMemo so we don't return a brand-new array from the selector each
   // render (which would loop the subscription).
   const clientsAll = useData((s) => s.clients);
   const plansAll = useData((s) => s.plans);
+  const fetchAdminStats = useData((s) => s.fetchAdminStats);
+  const searchClients = useData((s) => s.searchClients);
   // Reactive trainer lookup so the header avatar always reflects the latest
   // profile picture / name.
   const trainerData = useData((s) =>
     !isAdmin ? s.trainers.find((t) => t.id === user.trainer.id) : undefined
   );
 
+  // Admin stats come from the server (correct beyond the in-memory 1000 cap).
+  const [adminStats, setAdminStats] = useState<AdminStats | null>(null);
+  useEffect(() => {
+    if (!isAdmin) return;
+    let alive = true;
+    fetchAdminStats()
+      .then((s) => alive && setAdminStats(s))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [isAdmin, fetchAdminStats]);
+
+  // Server-side search (debounced) for BOTH roles. RLS scopes results: an
+  // admin searches every client; a trainer only ever gets their own — so this
+  // scales to 1000+ on both sides without loading everything into memory.
+  const [remoteResults, setRemoteResults] = useState<Client[] | null>(null);
+  useEffect(() => {
+    const term = search.trim();
+    if (!term) {
+      setRemoteResults(null);
+      return;
+    }
+    let alive = true;
+    const t = setTimeout(() => {
+      searchClients({ search: term, limit: 50 })
+        .then((rows) => {
+          if (!alive) return;
+          if (!isAdmin) {
+            // Trainer list only shows non-completed clients.
+            setRemoteResults(rows.filter((c) => c.status !== "Completed"));
+          } else {
+            setRemoteResults(
+              adminTab === "active"
+                ? rows.filter((c) => c.status !== "Completed")
+                : rows.filter((c) => c.status === "Completed")
+            );
+          }
+        })
+        .catch(() => {});
+    }, 250);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [isAdmin, search, adminTab, searchClients]);
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      if (isAdmin) setAdminStats(await fetchAdminStats());
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   const clients = useMemo(() => {
+    // Active server search (either role) → show those results.
+    if (remoteResults) return remoteResults;
     if (!isAdmin)
       return clientsAll.filter(
         (c) => c.trainerId === trainerId && c.status !== "Completed"
@@ -62,17 +125,12 @@ export default function Clients() {
     if (adminTab === "active")
       return clientsAll.filter((c) => c.status !== "Completed");
     return clientsAll.filter((c) => c.status === "Completed");
-  }, [clientsAll, isAdmin, trainerId, adminTab]);
+  }, [clientsAll, isAdmin, trainerId, adminTab, remoteResults]);
 
   const trainerStats = useMemo(
     () => (trainerId ? computeTrainerStats(trainerId) : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [trainerId, clientsAll, plansAll]
-  );
-  const adminStats = useMemo(
-    () => (isAdmin ? computeAdminStats() : null),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isAdmin, clientsAll, plansAll]
   );
 
   return (
@@ -84,14 +142,49 @@ export default function Clients() {
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
       />
       <SafeAreaView edges={["top"]} className="flex-1">
-        <ScrollView
+        <FlatList
+          data={clients}
+          keyExtractor={(item) => item.id}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 20,
             paddingBottom: insets.bottom + (isAdmin ? 110 : 200),
             paddingTop: 4
           }}
-        >
+          initialNumToRender={8}
+          maxToRenderPerBatch={8}
+          windowSize={9}
+          refreshControl={
+            isAdmin ? (
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={onRefresh}
+                tintColor={colors.lime}
+              />
+            ) : undefined
+          }
+          ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
+          renderItem={({ item, index }) => (
+            <ClientRow
+              client={item}
+              index={index}
+              showTrainer={isAdmin}
+              onPress={() => router.push(`/(app)/client/${item.id}`)}
+            />
+          )}
+          ListEmptyComponent={
+            <View className="rounded-2xl border border-line bg-surface p-6 items-center">
+              <Text variant="body" className="text-ink-2 text-center">
+                {isAdmin
+                  ? adminTab === "active"
+                    ? "No active clients yet."
+                    : "No completed clients yet."
+                  : 'No clients yet. Tap "New Client" below.'}
+              </Text>
+            </View>
+          }
+          ListHeaderComponent={
+            <>
           <MotiView
             from={{ opacity: 0, translateY: 8 }}
             animate={{ opacity: 1, translateY: 0 }}
@@ -177,9 +270,9 @@ export default function Clients() {
             </View>
           ) : null}
 
-          {/* Admin: Active vs Completed tabs */}
+          {/* Admin: Active vs Completed tabs + server-side search */}
           {isAdmin ? (
-            <View className="mt-5">
+            <View className="mt-5" style={{ gap: 10 }}>
               <SegmentedControl<AdminTab>
                 value={adminTab}
                 onChange={setAdminTab}
@@ -187,6 +280,30 @@ export default function Clients() {
                   { value: "active", label: "Active" },
                   { value: "completed", label: "Completed" }
                 ]}
+              />
+              <Input
+                placeholder="Search all clients by name…"
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="words"
+                iconLeft={
+                  <Search size={16} color={colors.ink3} strokeWidth={2.2} />
+                }
+              />
+            </View>
+          ) : null}
+
+          {/* Trainer: search across their own clients (RLS-scoped, scales). */}
+          {!isAdmin ? (
+            <View className="mt-5">
+              <Input
+                placeholder="Search my clients by name…"
+                value={search}
+                onChangeText={setSearch}
+                autoCapitalize="words"
+                iconLeft={
+                  <Search size={16} color={colors.ink3} strokeWidth={2.2} />
+                }
               />
             </View>
           ) : null}
@@ -200,38 +317,20 @@ export default function Clients() {
               )}
               <Text variant="label" className="text-ink-3 ml-1.5">
                 {isAdmin
-                  ? adminTab === "active"
+                  ? remoteResults
+                    ? `RESULTS · ${clients.length}`
+                    : adminTab === "active"
                     ? `ACTIVE · ${clients.length}`
                     : `COMPLETED · ${clients.length}`
+                  : remoteResults
+                  ? `RESULTS · ${clients.length}`
                   : `MY CLIENTS · ${clients.length}`}
               </Text>
             </View>
           </View>
-
-          <View style={{ gap: 8 }}>
-            {clients.length === 0 ? (
-              <View className="rounded-2xl border border-line bg-surface p-6 items-center">
-                <Text variant="body" className="text-ink-2 text-center">
-                  {isAdmin
-                    ? adminTab === "active"
-                      ? "No active clients yet."
-                      : "No completed clients yet."
-                    : 'No clients yet. Tap "New Client" below.'}
-                </Text>
-              </View>
-            ) : (
-              clients.map((c, i) => (
-                <ClientRow
-                  key={c.id}
-                  client={c}
-                  index={i}
-                  showTrainer={isAdmin}
-                  onPress={() => router.push(`/(app)/client/${c.id}`)}
-                />
-              ))
-            )}
-          </View>
-        </ScrollView>
+            </>
+          }
+        />
       </SafeAreaView>
 
       {!isAdmin ? (

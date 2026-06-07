@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, ScrollView, StatusBar, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
@@ -20,6 +20,7 @@ import { StarRating } from "@/components/StarRating";
 import { CalorieRangeBar } from "@/components/CalorieRangeBar";
 import { SlotHeader } from "@/components/SlotHeader";
 import { MealCard } from "@/components/MealCard";
+import { PlanLoadingScreen } from "@/components/PlanLoadingScreen";
 import {
   selectClient,
   selectPlan,
@@ -30,6 +31,7 @@ import { useAuth } from "@/store/auth";
 import { useNotifications } from "@/store/notifications";
 import { useLibrary } from "@/store/library";
 import { seedMeals } from "@/data/meals";
+import { mealConflictsWithClient } from "@/lib/allergens";
 import { formatDate, planDayState, planDayLabel } from "@/lib/format";
 import { Meal } from "@/data/types";
 import { colors } from "@/theme/tokens";
@@ -41,7 +43,9 @@ export default function PlanDetail() {
   const user = useAuth((s) => s.user)!;
   const isAdmin = user.role === "admin";
 
-  useData((s) => s.plans);
+  const plans = useData((s) => s.plans);
+  const dbMeals = useData((s) => s.meals);
+  const hasHydrated = useData((s) => s.hasHydrated);
   const updatePlan = useData((s) => s.updatePlan);
   const pushNotification = useNotifications((s) => s.safePush);
   const saveTemplate = useLibrary((s) => s.saveTemplate);
@@ -59,12 +63,88 @@ export default function PlanDetail() {
     [client]
   );
 
-  // Working copy of meal IDs — diverges from plan.selectedMealIds when admin swaps
+  // Working copy of meal IDs — diverges from plan.selectedMealIds when admin
+  // swaps. Normalized to strings because the DB column is text[]; keeping a
+  // single id type here is what makes swap + dirty-detection work.
   const [draftIds, setDraftIds] = useState<string[]>(
-    plan?.selectedMealIds ?? []
+    (plan?.selectedMealIds ?? []).map(String)
   );
   const [swapForSlot, setSwapForSlot] = useState<string | null>(null);
   const [swapTargetId, setSwapTargetId] = useState<string | null>(null);
+
+  // If the plan loads AFTER first render (cold load / deep link), seed the
+  // working copy once. Guarded on empty so it never clobbers in-progress swaps.
+  useEffect(() => {
+    const ids = plan?.selectedMealIds;
+    if (ids && ids.length > 0 && draftIds.length === 0) {
+      setDraftIds(ids.map(String));
+    }
+  }, [plan?.selectedMealIds, draftIds.length]);
+
+  const meals = useMemo(
+    () =>
+      draftIds
+        .map((id) => {
+          // Try to find in database meals first (by string id), then in seedMeals (by number)
+          const numId = Number(id);
+          return dbMeals.find((m) => m.id === numId) ?? seedMeals.find((m) => m.id === numId);
+        })
+        .filter((m): m is Meal => Boolean(m)),
+    [draftIds, dbMeals]
+  );
+
+  const slots = useMemo(
+    () => {
+      const breakfast = meals.filter((m) => m.mealType === "Breakfast");
+      const lunchDinner = meals.filter((m) => m.mealType === "Lunch / Dinner");
+      const snack = meals.filter((m) => m.mealType === "Snack");
+      return [
+        { slot: "Breakfast", meals: breakfast },
+        { slot: "Lunch", meals: lunchDinner.slice(0, Math.ceil(lunchDinner.length / 2)) },
+        { slot: "Dinner", meals: lunchDinner.slice(Math.ceil(lunchDinner.length / 2)) },
+        { slot: "Snack", meals: snack },
+      ].filter((s) => s.meals.length > 0);
+    },
+    [meals]
+  );
+
+  const dirty = useMemo(() => {
+    const a = (plan?.selectedMealIds ?? []).map(String).sort().join("|");
+    const b = draftIds.slice().sort().join("|");
+    return a !== b;
+  }, [plan?.selectedMealIds, draftIds]);
+
+  // Alternative meals for the slot being swapped (allergen + food-pref filtered)
+  const swapCandidates: Meal[] = useMemo(() => {
+    if (!swapForSlot || !client) return [];
+    const wantsVegOnly = client.foodPref === "Veg";
+    const inUse = new Set(draftIds.map(Number));
+
+    const mealType =
+      swapForSlot === "Breakfast"
+        ? "Breakfast"
+        : swapForSlot === "Snack"
+        ? "Snack"
+        : "Lunch / Dinner";
+    // Use database meals first, fall back to seedMeals
+    const availableMeals = dbMeals.length > 0 ? dbMeals : seedMeals;
+    return availableMeals.filter((m) => {
+      if (m.mealType !== mealType) return false;
+      if (inUse.has(m.id) && String(m.id) !== swapTargetId) return false; // skip already-picked
+      if (wantsVegOnly && m.diet === "Non-Veg") return false;
+      // Reliable structured allergen check (set-intersection).
+      if (mealConflictsWithClient(m.allergens, client.allergens)) return false;
+      return true;
+    });
+  }, [swapForSlot, draftIds, swapTargetId, client, dbMeals]);
+
+  // --- All hooks above this line always run (no conditional hooks) ---
+
+  // Data not ready yet → show the branded loader instead of a "not found"
+  // flash while the store hydrates.
+  if (!hasHydrated && (!plan || !client)) {
+    return <PlanLoadingScreen title="Loading plan" subtitle="Fetching meals…" />;
+  }
 
   if (!plan || !client) {
     return (
@@ -77,34 +157,7 @@ export default function PlanDetail() {
     );
   }
 
-  const meals = useMemo(
-    () =>
-      draftIds
-        .map((id) => seedMeals.find((m) => m.id === Number(id)))
-        .filter((m): m is Meal => Boolean(m)),
-    [draftIds]
-  );
-
-  const slots = useMemo(
-    () => {
-      const breakfast = meals.filter((m) => m.mealType === "Breakfast");
-      const lunchDinner = meals.filter((m) => m.mealType === "Lunch / Dinner");
-      return [
-        { slot: "Breakfast", meals: breakfast },
-        { slot: "Lunch", meals: lunchDinner.slice(0, Math.ceil(lunchDinner.length / 2)) },
-        { slot: "Dinner", meals: lunchDinner.slice(Math.ceil(lunchDinner.length / 2)) },
-      ].filter((s) => s.meals.length > 0);
-    },
-    [meals]
-  );
-
-  const dirty = useMemo(() => {
-    const a = (plan.selectedMealIds ?? []).slice().sort().join("|");
-    const b = draftIds.slice().sort().join("|");
-    return a !== b;
-  }, [plan.selectedMealIds, draftIds]);
-
-  // Older seed plans may not carry meal IDs — early out with a friendly state.
+  // Older seed plans may not carry meal IDs — friendly empty state.
   if (meals.length === 0) {
     return (
       <View className="flex-1 bg-bg">
@@ -140,29 +193,6 @@ export default function PlanDetail() {
     );
   }
 
-  // Alternative meals for the slot being swapped (allergen + food-pref filtered)
-  const swapCandidates: Meal[] = useMemo(() => {
-    if (!swapForSlot) return [];
-    const allergenSet = new Set(
-      client.allergens.filter((a) => a !== "None")
-    );
-    const wantsVegOnly = client.foodPref === "Veg";
-    const inUse = new Set(draftIds);
-
-    const mealType = swapForSlot === "Breakfast" ? "Breakfast" : "Lunch / Dinner";
-    return seedMeals.filter((m) => {
-      if (m.mealType !== mealType) return false;
-      if (inUse.has(m.id) && m.id !== swapTargetId) return false; // skip already-picked
-      if (wantsVegOnly && m.diet === "Non-Veg") return false;
-      // Check if meal allergens conflict with client allergens
-      if (m.allergens) {
-        const mealAllergens = m.allergens.split(" · ");
-        if (mealAllergens.some((a) => allergenSet.has(a))) return false;
-      }
-      return true;
-    });
-  }, [swapForSlot, draftIds, swapTargetId, client.allergens, client.foodPref]);
-
   const onSwap = (oldMealId: string, newMealId: string) => {
     setDraftIds((prev) => prev.map((id) => (id === oldMealId ? newMealId : id)));
     setSwapForSlot(null);
@@ -171,47 +201,52 @@ export default function PlanDetail() {
   };
 
   const onSaveChanges = async () => {
-    if (!isAdmin) return;
     try {
       await updatePlan(plan.id, { selectedMealIds: draftIds });
 
-      // Update the source plan_change_request notification (if any)
-      const sourceRequest = useNotifications
-        .getState()
-        .items.find(
-          (n) =>
-            n.recipientRole === "admin" &&
-            n.kind === "plan_change_request" &&
-            n.payload.planId === plan.id
-        );
-      if (sourceRequest) {
-        // safeUpdate — failure here shouldn't block the "Saved" flow
-        await useNotifications.getState().safeUpdate(sourceRequest.id, {
-          kind: "admin_changed_plan",
-          title: "Plan change completed",
-          body: `Updated Plan ${plan.weekNumber} for ${client.name}.`,
-          isRead: true
-        });
+      if (isAdmin) {
+        // Admin edit: close any pending change request + notify the trainer.
+        const sourceRequest = useNotifications
+          .getState()
+          .items.find(
+            (n) =>
+              n.recipientRole === "admin" &&
+              n.kind === "plan_change_request" &&
+              n.payload.planId === plan.id
+          );
+        if (sourceRequest) {
+          await useNotifications.getState().safeUpdate(sourceRequest.id, {
+            kind: "admin_changed_plan",
+            title: "Plan change completed",
+            body: `Updated Plan ${plan.weekNumber} for ${client.name}.`,
+            isRead: true
+          });
+        }
+        if (client.trainerId) {
+          await pushNotification({
+            recipientRole: "trainer",
+            recipientId: client.trainerId,
+            kind: "admin_changed_plan",
+            title: "Plan updated by admin",
+            body: `Admin swapped meals in Plan ${plan.weekNumber} for ${client.name}.`,
+            payload: {
+              clientId: client.id,
+              planId: plan.id,
+              trainerId: client.trainerId
+            }
+          });
+        }
+        haptics.success();
+        Alert.alert("Saved", "Plan updated. Trainer has been notified.", [
+          { text: "OK", onPress: () => router.back() }
+        ]);
+      } else {
+        // Trainer edited their own client's plan — saves directly.
+        haptics.success();
+        Alert.alert("Saved", "Plan updated.", [
+          { text: "OK", onPress: () => router.back() }
+        ]);
       }
-
-      if (client.trainerId) {
-        await pushNotification({
-          recipientRole: "trainer",
-          recipientId: client.trainerId,
-          kind: "admin_changed_plan",
-          title: "Plan updated by admin",
-          body: `Admin swapped meals in Plan ${plan.weekNumber} for ${client.name}.`,
-          payload: {
-            clientId: client.id,
-            planId: plan.id,
-            trainerId: client.trainerId
-          }
-        });
-      }
-      haptics.success();
-      Alert.alert("Saved", "Plan updated. Trainer has been notified.", [
-        { text: "OK", onPress: () => router.back() }
-      ]);
     } catch (e: any) {
       haptics.warning();
       Alert.alert("Couldn't save changes", e?.message ?? String(e));
@@ -227,7 +262,7 @@ export default function PlanDetail() {
         sourcePlanId: plan.id,
         sourceClientName: client.name,
         savedByAdminId: user.admin.id,
-        selectedMealIds: plan.selectedMealIds,
+        selectedMealIds: plan.selectedMealIds.map(String),
         calorieRangeLow: plan.calorieRangeLow,
         calorieRangeHigh: plan.calorieRangeHigh,
         tagSummary: `${client.goal} · ${client.foodPref} · ${client.clientTypes.join(" / ")}`
@@ -276,7 +311,8 @@ export default function PlanDetail() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={{
             paddingHorizontal: 20,
-            paddingBottom: insets.bottom + (isAdmin ? 120 : 32)
+            // Reserve space for the save bar (both roles can edit now).
+            paddingBottom: insets.bottom + 120
           }}
         >
           {/* Client + plan header */}
@@ -379,33 +415,32 @@ export default function PlanDetail() {
               <View style={{ gap: 8 }}>
                 {s.meals.map((m, i) => (
                   <View key={m.id}>
-                    <MealCard meal={m} delay={140 + slotIdx * 60 + i * 30} />
-                    {isAdmin ? (
-                      <View className="flex-row mt-2">
-                        <Pressable
-                          onPress={() => {
-                            setSwapTargetId(m.id);
-                            setSwapForSlot(s.slot);
-                          }}
-                          haptic="light"
-                          scaleTo={0.97}
-                          className="flex-row items-center px-3 h-8 rounded-full border border-line-strong bg-white/[0.04]"
+                    <MealCard meal={m} delay={slotIdx * 24 + i * 12} />
+                    {/* Both admin and the owning trainer can swap meals. */}
+                    <View className="flex-row mt-2">
+                      <Pressable
+                        onPress={() => {
+                          setSwapTargetId(String(m.id));
+                          setSwapForSlot(s.slot);
+                        }}
+                        haptic="light"
+                        scaleTo={0.97}
+                        className="flex-row items-center px-3 h-8 rounded-full border border-line-strong bg-white/[0.04]"
+                      >
+                        <RefreshCw
+                          size={11}
+                          color={colors.ink2}
+                          strokeWidth={2.4}
+                        />
+                        <Text
+                          variant="caption"
+                          className="text-ink-2 ml-1.5"
+                          style={{ fontFamily: "Inter_600SemiBold" }}
                         >
-                          <RefreshCw
-                            size={11}
-                            color={colors.ink2}
-                            strokeWidth={2.4}
-                          />
-                          <Text
-                            variant="caption"
-                            className="text-ink-2 ml-1.5"
-                            style={{ fontFamily: "Inter_600SemiBold" }}
-                          >
-                            Swap this meal
-                          </Text>
-                        </Pressable>
-                      </View>
-                    ) : null}
+                          Swap this meal
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
                 ))}
               </View>
@@ -414,11 +449,11 @@ export default function PlanDetail() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Admin: Save & Notify */}
-      {isAdmin && dirty ? (
+      {/* Save bar — shown to whoever edited (admin or owning trainer). */}
+      {dirty ? (
         <BottomBar>
           <Button
-            label="Save Changes & Notify Trainer"
+            label={isAdmin ? "Save Changes & Notify Trainer" : "Save Changes"}
             size="lg"
             fullWidth
             iconLeft={<Check size={16} color="#0A0B0D" strokeWidth={3} />}
@@ -453,12 +488,12 @@ export default function PlanDetail() {
               </Text>
             ) : (
               swapCandidates.map((alt) => {
-                const isCurrent = alt.id === swapTargetId;
+                const isCurrent = String(alt.id) === swapTargetId;
                 return (
                   <Pressable
                     key={alt.id}
                     onPress={() =>
-                      swapTargetId && onSwap(swapTargetId, alt.id)
+                      swapTargetId && onSwap(swapTargetId, String(alt.id))
                     }
                     haptic="light"
                     scaleTo={0.98}
@@ -477,7 +512,7 @@ export default function PlanDetail() {
                           numberOfLines={1}
                           style={{ fontFamily: "Inter_600SemiBold" }}
                         >
-                          {alt.name}
+                          {alt.mealName}
                         </Text>
                         <Text
                           variant="caption"

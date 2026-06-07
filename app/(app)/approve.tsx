@@ -43,9 +43,11 @@ export default function Approve() {
     () => {
       const breakfast = meals.filter((m) => m.mealType === "Breakfast");
       const lunchDinner = meals.filter((m) => m.mealType === "Lunch / Dinner");
+      const snack = meals.filter((m) => m.mealType === "Snack");
       return [
         { slot: "Breakfast", meals: breakfast },
-        { slot: "Lunch / Dinner", meals: lunchDinner }
+        { slot: "Lunch / Dinner", meals: lunchDinner },
+        { slot: "Snack", meals: snack }
       ].filter((s) => s.meals.length > 0);
     },
     [meals]

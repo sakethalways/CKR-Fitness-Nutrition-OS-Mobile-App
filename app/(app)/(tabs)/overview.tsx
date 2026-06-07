@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, ScrollView, StatusBar } from "react-native";
 import { router } from "expo-router";
 import { MotiView } from "moti";
@@ -21,7 +21,7 @@ import { Pressable } from "@/components/Pressable";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { Logo } from "@/components/Logo";
 import { useAuth } from "@/store/auth";
-import { computeAdminStats, useData } from "@/store/data";
+import { useData, type AdminStats } from "@/store/data";
 import { useNotifications } from "@/store/notifications";
 import { timeAgo } from "@/lib/format";
 import { colors } from "@/theme/tokens";
@@ -31,16 +31,28 @@ export default function Overview() {
   const signOut = useAuth((s) => s.signOut);
   const insets = useSafeAreaInsets();
 
-  const clientsAll = useData((s) => s.clients);
   const plansAll = useData((s) => s.plans);
-  const trainersAll = useData((s) => s.trainers);
+  const fetchAdminStats = useData((s) => s.fetchAdminStats);
   const items = useNotifications((s) => s.items);
 
-  const stats = useMemo(
-    () => computeAdminStats(),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [clientsAll, plansAll, trainersAll]
-  );
+  // Dashboard stats from the server (correct beyond the in-memory 1000 cap).
+  const [statsRemote, setStatsRemote] = useState<AdminStats | null>(null);
+  useEffect(() => {
+    let alive = true;
+    fetchAdminStats()
+      .then((s) => alive && setStatsRemote(s))
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [fetchAdminStats]);
+  const stats: AdminStats = statsRemote ?? {
+    activeClients: 0,
+    critical: 0,
+    completed: 0,
+    trainers: 0,
+    avgRating: 0
+  };
 
   const recentNotifs = useMemo(
     () =>

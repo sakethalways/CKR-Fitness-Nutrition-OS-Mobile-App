@@ -16,8 +16,10 @@ export const buildWhatsAppText = (
     lines.push(`*${s.slot.toUpperCase()}* — pick one`);
     for (const m of s.meals) {
       lines.push(
-        `• ${m.mealName} — ${m.calories} kcal · P${Math.round(m.proteinG)} C${Math.round(m.carbsG)} F${Math.round(m.fatG)}`
+        `• *${m.mealName}* — ${m.calories} kcal · P${Math.round(m.proteinG)} C${Math.round(m.carbsG)} F${Math.round(m.fatG)}`
       );
+      // The ingredient quantities are the most useful part for the client.
+      if (m.quantities) lines.push(`   ${m.quantities}`);
     }
     lines.push("");
   }
@@ -51,6 +53,11 @@ export const buildPlanHTML = (
             <span class="macro c">C ${Math.round(m.carbsG)}g</span>
             <span class="macro f">F ${Math.round(m.fatG)}g</span>
           </div>
+          ${
+            m.quantities
+              ? `<div class="meal-qty">${escapeHtml(m.quantities)}</div>`
+              : ""
+          }
         </div>
       `
         )
@@ -109,6 +116,7 @@ export const buildPlanHTML = (
   .meal-kcal { font-size: 16px; font-weight: 700; color: #D8FF5C; letter-spacing: -0.2px; white-space: nowrap; }
   .meal-kcal .unit { font-size: 9px; color: #64748B; margin-left: 1px; font-weight: 500; }
   .meal-meta { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
+  .meal-qty { margin-top: 6px; font-size: 11px; color: #B6C2D1; line-height: 1.45; border-top: 0.5px dashed rgba(255,255,255,0.10); padding-top: 6px; }
   .macro { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
   .macro.p { color: #60A5FA; background: rgba(96,165,250,0.12); }
   .macro.c { color: #C6F432; background: rgba(198,244,50,0.12); }

@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { View, ScrollView, StatusBar } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, RefreshCw } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Text } from "@/components/Text";
@@ -10,15 +10,43 @@ import { Pressable } from "@/components/Pressable";
 import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { BottomBar } from "@/components/BottomBar";
+import { Sheet } from "@/components/Sheet";
 import { CalorieRangeBar } from "@/components/CalorieRangeBar";
 import { SlotHeader } from "@/components/SlotHeader";
 import { MealCard } from "@/components/MealCard";
 import { PlanLoadingScreen } from "@/components/PlanLoadingScreen";
 import { useData } from "@/store/data";
 import { generateForClient, GenerationResult } from "@/lib/mealGenerator";
+import { mealConflictsWithClient } from "@/lib/allergens";
+import { Meal } from "@/data/types";
 import { genderLabel } from "@/lib/format";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+
+// Recompute the plan's totals after a swap.
+const recomputeTotals = (slots: GenerationResult["slots"]) => {
+  let low = 0;
+  let high = 0;
+  let pLow = 0;
+  let pHigh = 0;
+  for (const s of slots) {
+    const cals = s.meals.map((m) => m.calories);
+    const prots = s.meals.map((m) => m.proteinG);
+    if (cals.length) {
+      low += Math.min(...cals);
+      high += Math.max(...cals);
+      pLow += Math.min(...prots);
+      pHigh += Math.max(...prots);
+    }
+  }
+  return {
+    flatMeals: slots.flatMap((s) => s.meals),
+    rangeLow: low,
+    rangeHigh: high,
+    proteinLow: Math.round(pLow),
+    proteinHigh: Math.round(pHigh)
+  };
+};
 
 const LOADING_DURATION_MS = 1800;
 
@@ -41,14 +69,63 @@ export default function MealsScreen() {
   // UX delay so the trainer sees the loading screen + fitness quote
   const [showLoading, setShowLoading] = useState(true);
 
+  // Swap-before-approve: which meal (slot + meal) is being swapped.
+  const [swap, setSwap] = useState<{ slotIdx: number; meal: Meal } | null>(null);
+  const dbMeals = useData((s) => s.meals);
+
+  // Alternatives for the meal being swapped: same slot type, SAME calorie
+  // bracket (keeps the plan within range), diet/allergen-safe, not already
+  // in the plan.
+  const swapCandidates = useMemo<Meal[]>(() => {
+    if (!swap || !client || !generated) return [];
+    const slotLabel = generated.slots[swap.slotIdx]?.slot;
+    const slotType =
+      slotLabel === "Breakfast"
+        ? "Breakfast"
+        : slotLabel === "Snack"
+        ? "Snack"
+        : "Lunch / Dinner";
+    const inUse = new Set(generated.flatMeals.map((m) => m.id));
+    const vegOnly = client.foodPref === "Veg";
+    return dbMeals.filter(
+      (m) =>
+        m.mealType === slotType &&
+        m.calBracket === swap.meal.calBracket &&
+        m.id !== swap.meal.id &&
+        !inUse.has(m.id) &&
+        !(vegOnly && m.diet === "Non-Veg") &&
+        !mealConflictsWithClient(m.allergens, client.allergens)
+    );
+  }, [swap, client, generated, dbMeals]);
+
+  const doSwap = (newMeal: Meal) => {
+    if (!swap) return;
+    setGenerated((prev) => {
+      if (!prev) return prev;
+      const slots = prev.slots.map((s, idx) =>
+        idx === swap.slotIdx
+          ? {
+              ...s,
+              meals: s.meals.map((mm) =>
+                mm.id === swap.meal.id ? newMeal : mm
+              )
+            }
+          : s
+      );
+      return { ...prev, slots, ...recomputeTotals(slots) };
+    });
+    setSwap(null);
+    haptics.success();
+  };
+
   useEffect(() => {
     if (!client || generated) return;
     try {
-      const priorPlans = useData
-        .getState()
-        .plans.filter((p) => p.clientId === client.id)
+      const { plans, meals } = useData.getState();
+      const priorPlans = plans
+        .filter((p) => p.clientId === client.id)
         .sort((a, b) => b.weekNumber - a.weekNumber);
-      const gen = generateForClient(client, priorPlans);
+      const gen = generateForClient(client, priorPlans, meals);
       setGenerated(gen);
     } catch (e: any) {
       setError(e?.message ?? "Could not generate meal options");
@@ -202,6 +279,68 @@ export default function MealsScreen() {
             />
           </MotiView>
 
+          {(() => {
+            const target = client.calorieTarget ?? 0;
+            const underTarget = target > 0 && generated.rangeHigh < target * 0.9;
+            if (generated.missingSlots.length === 0 && !underTarget) return null;
+            const avoided = client.allergens.filter((a) => a !== "None");
+            return (
+              <View className="mt-4 rounded-xl border border-warn/30 bg-warn/[0.06] px-3 py-2.5">
+                <Text
+                  variant="caption"
+                  className="text-warn"
+                  style={{ fontFamily: "Inter_600SemiBold" }}
+                >
+                  {generated.missingSlots.length > 0
+                    ? `Limited options — no ${generated.missingSlots.join(" / ")} fit this client`
+                    : "Plan is under target"}
+                </Text>
+                <Text
+                  variant="caption"
+                  className="text-ink-3 mt-0.5"
+                  style={{ lineHeight: 16 }}
+                >
+                  This plan delivers ~{generated.rangeLow}
+                  {generated.rangeHigh !== generated.rangeLow
+                    ? `–${generated.rangeHigh}`
+                    : ""}{" "}
+                  kcal vs a {target} kcal target. Too few meals match
+                  {client.foodPref === "Veg" ? " their veg preference" : ""}
+                  {avoided.length
+                    ? `${client.foodPref === "Veg" ? " and" : ""} their allergens (${avoided.join(", ")})`
+                    : ""}
+                  . Add more suitable meals to the catalogue to build a complete plan.
+                </Text>
+              </View>
+            );
+          })()}
+
+          {(() => {
+            const pTarget = client.proteinTarget ?? 0;
+            // Best case: client picks the highest-protein option in each slot.
+            if (pTarget <= 0 || generated.proteinHigh >= pTarget * 0.9) return null;
+            return (
+              <View className="mt-3 rounded-xl border border-info/30 bg-info/[0.06] px-3 py-2.5">
+                <Text
+                  variant="caption"
+                  className="text-info"
+                  style={{ fontFamily: "Inter_600SemiBold" }}
+                >
+                  Protein runs below target
+                </Text>
+                <Text
+                  variant="caption"
+                  className="text-ink-3 mt-0.5"
+                  style={{ lineHeight: 16 }}
+                >
+                  This plan tops out around {generated.proteinHigh}g protein vs a{" "}
+                  {pTarget}g target. Add a higher-protein meal (or a protein
+                  snack) to close the gap.
+                </Text>
+              </View>
+            );
+          })()}
+
           {generated.slots.map((s, slotIdx) => (
             <React.Fragment key={s.slot}>
               <SlotHeader
@@ -211,11 +350,26 @@ export default function MealsScreen() {
               />
               <View style={{ gap: 8 }}>
                 {s.meals.map((m, i) => (
-                  <MealCard
-                    key={m.id}
-                    meal={m}
-                    delay={200 + slotIdx * 80 + i * 40}
-                  />
+                  <View key={m.id}>
+                    <MealCard meal={m} delay={200 + slotIdx * 80 + i * 40} />
+                    <View className="flex-row mt-2">
+                      <Pressable
+                        onPress={() => setSwap({ slotIdx, meal: m })}
+                        haptic="light"
+                        scaleTo={0.97}
+                        className="flex-row items-center px-3 h-8 rounded-full border border-line-strong bg-white/[0.04]"
+                      >
+                        <RefreshCw size={11} color={colors.ink2} strokeWidth={2.4} />
+                        <Text
+                          variant="caption"
+                          className="text-ink-2 ml-1.5"
+                          style={{ fontFamily: "Inter_600SemiBold" }}
+                        >
+                          Swap this meal
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 ))}
               </View>
             </React.Fragment>
@@ -232,6 +386,52 @@ export default function MealsScreen() {
           onPress={onApprove}
         />
       </BottomBar>
+
+      {/* Swap sheet — alternatives within the same calorie bracket */}
+      <Sheet
+        visible={swap !== null}
+        onClose={() => setSwap(null)}
+        title={swap ? `Swap ${generated.slots[swap.slotIdx]?.slot}` : ""}
+        subtitle={
+          swap
+            ? `${swap.meal.calBracket} · keeps the plan within range`
+            : undefined
+        }
+        compact={false}
+      >
+        <ScrollView style={{ maxHeight: 460 }} showsVerticalScrollIndicator={false}>
+          <View style={{ gap: 8, paddingBottom: 16 }}>
+            {swapCandidates.length === 0 ? (
+              <Text variant="body" className="text-ink-3 text-center mt-3">
+                No other meals in this calorie bracket fit this client.
+              </Text>
+            ) : (
+              swapCandidates.map((alt) => (
+                <Pressable
+                  key={alt.id}
+                  onPress={() => doSwap(alt)}
+                  haptic="light"
+                  scaleTo={0.98}
+                  className="rounded-2xl border border-line bg-surface p-3"
+                >
+                  <Text
+                    variant="bodyMedium"
+                    className="text-ink"
+                    numberOfLines={1}
+                    style={{ fontFamily: "Inter_600SemiBold" }}
+                  >
+                    {alt.mealName}
+                  </Text>
+                  <Text variant="caption" className="text-ink-3 mt-0.5" tabular>
+                    {alt.calories} kcal · P{Math.round(alt.proteinG)} C
+                    {Math.round(alt.carbsG)} F{Math.round(alt.fatG)}
+                  </Text>
+                </Pressable>
+              ))
+            )}
+          </View>
+        </ScrollView>
+      </Sheet>
     </View>
   );
 }

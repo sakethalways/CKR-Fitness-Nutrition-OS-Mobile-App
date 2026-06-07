@@ -38,7 +38,7 @@ const statusTone = (s: ClientStatus) => {
   }
 };
 
-export function ClientRow({
+export const ClientRow = React.memo(function ClientRow({
   client,
   onPress,
   index = 0,
@@ -55,7 +55,8 @@ export function ClientRow({
         type: "spring",
         damping: 18,
         stiffness: 200,
-        delay: 60 + index * 35
+        // Cap the stagger so long admin lists don't animate in over 1s+.
+        delay: 60 + Math.min(index, 8) * 35
       }}
     >
       <Pressable
@@ -120,4 +121,4 @@ export function ClientRow({
       </Pressable>
     </MotiView>
   );
-}
+});

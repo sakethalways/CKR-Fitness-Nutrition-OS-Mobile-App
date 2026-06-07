@@ -14,6 +14,11 @@ export let supabaseInitError: string | null = null;
 // ===========================================================================
 const FETCH_TIMEOUT_MS = 15000;
 
+// Per-request logging is dev-only — in release it would run on every network
+// call on the user's device (pure overhead + noise). The 15s hard-abort stays
+// in all builds so a flaky network can never hang a request forever.
+const DEV = typeof __DEV__ !== "undefined" && __DEV__;
+
 const loggedFetch: typeof fetch = (input, init) => {
   const url =
     typeof input === "string"
@@ -23,13 +28,17 @@ const loggedFetch: typeof fetch = (input, init) => {
       : (input as Request).url;
   const method = init?.method ?? "GET";
   const start = Date.now();
-  // eslint-disable-next-line no-console
-  console.log(`[fetch →] ${method} ${url}`);
+  if (DEV) {
+    // eslint-disable-next-line no-console
+    console.log(`[fetch →] ${method} ${url}`);
+  }
 
   const controller = new AbortController();
   const timer = setTimeout(() => {
-    // eslint-disable-next-line no-console
-    console.warn(`[fetch ⏱] aborting after ${FETCH_TIMEOUT_MS}ms: ${url}`);
+    if (DEV) {
+      // eslint-disable-next-line no-console
+      console.warn(`[fetch ⏱] aborting after ${FETCH_TIMEOUT_MS}ms: ${url}`);
+    }
     controller.abort();
   }, FETCH_TIMEOUT_MS);
 
@@ -38,32 +47,34 @@ const loggedFetch: typeof fetch = (input, init) => {
   return fetch(input as any, { ...init, signal })
     .then(async (res) => {
       clearTimeout(timer);
-      if (res.ok) {
-        // eslint-disable-next-line no-console
-        console.log(
-          `[fetch ←] ${res.status} ${url} (${Date.now() - start}ms)`
-        );
-      } else {
-        // Read body so we see the EXACT Postgres / Supabase error
-        let body = "";
-        try {
-          body = await res.clone().text();
-        } catch {
-          /* silent */
+      if (DEV) {
+        if (res.ok) {
+          // eslint-disable-next-line no-console
+          console.log(`[fetch ←] ${res.status} ${url} (${Date.now() - start}ms)`);
+        } else {
+          // Read body so we see the EXACT Postgres / Supabase error
+          let body = "";
+          try {
+            body = await res.clone().text();
+          } catch {
+            /* silent */
+          }
+          // eslint-disable-next-line no-console
+          console.error(
+            `[fetch ✗] ${res.status} ${url} (${Date.now() - start}ms)\n  body: ${body.slice(0, 600)}`
+          );
         }
-        // eslint-disable-next-line no-console
-        console.error(
-          `[fetch ✗] ${res.status} ${url} (${Date.now() - start}ms)\n  body: ${body.slice(0, 600)}`
-        );
       }
       return res;
     })
     .catch((e) => {
       clearTimeout(timer);
-      // eslint-disable-next-line no-console
-      console.error(
-        `[fetch ✗] ${url} (${Date.now() - start}ms) ${e?.message ?? e}`
-      );
+      if (DEV) {
+        // eslint-disable-next-line no-console
+        console.error(
+          `[fetch ✗] ${url} (${Date.now() - start}ms) ${e?.message ?? e}`
+        );
+      }
       throw e;
     });
 };

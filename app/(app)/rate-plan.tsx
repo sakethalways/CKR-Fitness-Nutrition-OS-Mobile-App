@@ -37,12 +37,27 @@ export default function RatePlan() {
     [plan]
   );
 
+  const dbMeals = useData((s) => s.meals);
   const meals = useMemo(() => {
     if (!plan?.selectedMealIds) return [];
-    return plan.selectedMealIds
-      .map((id) => seedMeals.find((m) => m.id === Number(id)))
-      .filter((m): m is NonNullable<typeof m> => Boolean(m));
-  }, [plan]);
+    // A meal can appear in more than one slot (e.g. limited catalogue puts the
+    // same meal in lunch AND dinner). Rate each UNIQUE meal once — both avoids
+    // duplicate React keys and is the correct rating behaviour.
+    const seen = new Set<number>();
+    const out: NonNullable<ReturnType<typeof dbMeals.find>>[] = [];
+    for (const id of plan.selectedMealIds) {
+      const numId = Number(id);
+      if (seen.has(numId)) continue;
+      const m =
+        dbMeals.find((x) => x.id === numId) ??
+        seedMeals.find((x) => x.id === numId);
+      if (m) {
+        seen.add(numId);
+        out.push(m);
+      }
+    }
+    return out;
+  }, [plan, dbMeals]);
 
   const [ratings, setRatings] = useState<Record<string, number>>(
     plan?.ratings ?? {}

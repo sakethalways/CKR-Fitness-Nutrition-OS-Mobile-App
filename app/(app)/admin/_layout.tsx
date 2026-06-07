@@ -29,5 +29,14 @@ export default function AdminLayout() {
     );
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: "#0A0B0D" },
+        animation: "slide_from_right",
+        animationDuration: 200
+      }}
+    />
+  );
 }

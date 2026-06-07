@@ -4,8 +4,8 @@ import Animated, {
   useSharedValue,
   withSpring
 } from "react-native-reanimated";
-import { View } from "react-native";
-import { Pressable } from "./Pressable";
+import { View, Pressable } from "react-native";
+import * as haptics from "@/lib/haptics";
 
 type Props = {
   value: boolean;
@@ -13,6 +13,8 @@ type Props = {
   size?: "sm" | "md";
 };
 
+// Uses a PLAIN RN Pressable (not the animated custom one) so taps register
+// reliably — the knob still animates via reanimated, driven by `value`.
 export function Toggle({ value, onChange, size = "md" }: Props) {
   const w = size === "md" ? 48 : 40;
   const h = size === "md" ? 28 : 24;
@@ -33,9 +35,11 @@ export function Toggle({ value, onChange, size = "md" }: Props) {
 
   return (
     <Pressable
-      onPress={() => onChange(!value)}
-      scaleTo={0.95}
-      haptic="medium"
+      onPress={() => {
+        haptics.tap();
+        onChange(!value);
+      }}
+      hitSlop={12}
     >
       <View
         style={{

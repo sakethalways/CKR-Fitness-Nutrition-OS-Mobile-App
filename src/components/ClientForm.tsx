@@ -12,6 +12,7 @@ import { Phone } from "lucide-react-native";
 import { Text } from "@/components/Text";
 import { Input } from "@/components/Input";
 import { Stepper } from "@/components/Stepper";
+import { HeightField } from "@/components/HeightField";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ChipSelector } from "@/components/ChipSelector";
 import { RadioGroup } from "@/components/RadioGroup";
@@ -22,6 +23,7 @@ import { CountryCodePicker } from "@/components/CountryCodePicker";
 import {
   ActivityLevel,
   Allergen,
+  ALLERGENS,
   Client,
   ClientStatus,
   ClientType,
@@ -38,14 +40,6 @@ const CLIENT_TYPES: readonly ClientType[] = [
   "Busy Pro",
   "Sweet Craving",
   "Standard"
-] as const;
-
-const ALLERGENS: readonly Allergen[] = [
-  "Dairy",
-  "Gluten",
-  "Nuts",
-  "Eggs",
-  "None"
 ] as const;
 
 const ACTIVITY_OPTS: { value: ActivityLevel; label: string; hint: string }[] = [
@@ -231,14 +225,10 @@ export function ClientForm({
                 max={200}
                 suffix="kg"
               />
-              <Stepper
-                label="Height"
-                value={height}
-                onChange={setHeight}
-                min={120}
-                max={220}
-                suffix="cm"
-              />
+            </View>
+
+            <View className="mt-3">
+              <HeightField value={height} onChange={setHeight} />
             </View>
           </Section>
 

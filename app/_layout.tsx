@@ -80,16 +80,18 @@ export default function RootLayout() {
         // eslint-disable-next-line no-console
         console.error("[app] auth init failed", e);
       });
-    // Last-ditch safety: never let the splash hang forever
+    // Last-ditch safety: never let the splash hang forever. Set above the
+    // auth getSession window (8s) so we don't force a premature "signed-out"
+    // render while a slow token refresh is still resolving.
     const t = setTimeout(() => {
       if (!resolved) {
         // eslint-disable-next-line no-console
         console.warn(
-          "[app] auth init exceeded 6s — force-hydrating so login can render"
+          "[app] auth init exceeded 11s — force-hydrating so login can render"
         );
         useAuth.setState({ hasHydrated: true, initializing: false });
       }
-    }, 6000);
+    }, 11000);
     return () => clearTimeout(t);
   }, [initAuth]);
 
@@ -158,7 +160,7 @@ export default function RootLayout() {
     lastUserId.current = uid;
     // eslint-disable-next-line no-console
     console.log("[app] user signed in →", user.role, uid);
-    useData.getState().init();
+    useData.getState().init(user.role);
     useNotifications.getState().init(user.role, uid);
     useLibrary.getState().init();
   }, [user]);

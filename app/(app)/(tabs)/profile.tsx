@@ -1,5 +1,12 @@
 import React from "react";
-import { View, ScrollView, StatusBar, Alert, Platform } from "react-native";
+import {
+  View,
+  ScrollView,
+  StatusBar,
+  Alert,
+  Platform,
+  ActivityIndicator
+} from "react-native";
 import { router } from "expo-router";
 import { MotiView } from "moti";
 import {
@@ -19,6 +26,7 @@ import * as ImagePicker from "expo-image-picker";
 import { uploadAvatar, deleteAvatar } from "@/lib/storage";
 import { Text } from "@/components/Text";
 import { Avatar } from "@/components/Avatar";
+import { Logo } from "@/components/Logo";
 import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { Pressable } from "@/components/Pressable";
@@ -42,6 +50,7 @@ export default function Profile() {
   );
 
   const [picOpen, setPicOpen] = React.useState(false);
+  const [signingOut, setSigningOut] = React.useState(false);
 
   const pickFromLibrary = async () => {
     setPicOpen(false);
@@ -115,14 +124,30 @@ export default function Profile() {
         text: "Sign out",
         style: "destructive",
         onPress: async () => {
-          await signOut();
-          router.replace("/login");
+          setSigningOut(true);
+          try {
+            await signOut();
+            router.replace("/login");
+          } catch {
+            setSigningOut(false);
+          }
         }
       }
     ]);
   };
 
   const hasPic = Boolean(trainer?.avatarUri);
+
+  if (signingOut) {
+    return (
+      <View className="flex-1 bg-bg items-center justify-center">
+        <ActivityIndicator color={colors.lime} />
+        <Text variant="caption" className="text-ink-3 mt-3">
+          Signing out…
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View className="flex-1 bg-bg">
@@ -156,46 +181,47 @@ export default function Profile() {
             transition={{ type: "spring", damping: 18, stiffness: 200 }}
             className="items-center mb-5"
           >
-            <Pressable
-              onPress={() => trainer && setPicOpen(true)}
-              haptic="light"
-              scaleTo={0.95}
-              disabled={!trainer}
-            >
-              <View>
-                <Avatar
-                  initials={
-                    trainer?.initials ??
-                    (user.role === "admin"
-                      ? user.admin.initials
-                      : user.trainer.initials)
-                  }
-                  size={88}
-                  tone="lime"
-                  ring
-                  imageUri={trainer?.avatarUri}
-                />
-                {trainer ? (
-                  <View
-                    style={{
-                      position: "absolute",
-                      right: -2,
-                      bottom: -2,
-                      width: 30,
-                      height: 30,
-                      borderRadius: 15,
-                      backgroundColor: colors.lime,
-                      alignItems: "center",
-                      justifyContent: "center",
-                      borderWidth: 3,
-                      borderColor: "#0A0B0D"
-                    }}
-                  >
-                    <Camera size={13} color="#0A0B0D" strokeWidth={2.6} />
-                  </View>
-                ) : null}
-              </View>
-            </Pressable>
+            {user.role === "admin" ? (
+              // Admin has no profile photo — show the brand logo instead of
+              // the "CA" initials avatar.
+              <Logo size={88} animate={false} />
+            ) : (
+              <Pressable
+                onPress={() => trainer && setPicOpen(true)}
+                haptic="light"
+                scaleTo={0.95}
+                disabled={!trainer}
+              >
+                <View>
+                  <Avatar
+                    initials={trainer?.initials ?? user.trainer.initials}
+                    size={88}
+                    tone="lime"
+                    ring
+                    imageUri={trainer?.avatarUri}
+                  />
+                  {trainer ? (
+                    <View
+                      style={{
+                        position: "absolute",
+                        right: -2,
+                        bottom: -2,
+                        width: 30,
+                        height: 30,
+                        borderRadius: 15,
+                        backgroundColor: colors.lime,
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderWidth: 3,
+                        borderColor: "#0A0B0D"
+                      }}
+                    >
+                      <Camera size={13} color="#0A0B0D" strokeWidth={2.6} />
+                    </View>
+                  ) : null}
+                </View>
+              </Pressable>
+            )}
 
             <Text variant="h2" className="text-ink mt-3">
               {user.role === "admin" ? user.admin.name : user.trainer.name}

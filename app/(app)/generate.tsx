@@ -195,7 +195,8 @@ export default function Generate() {
                     </Text>
                   </View>
                   <Text variant="caption" className="text-ink-2 mt-1" tabular>
-                    Range {Math.round(target * 0.95)}–{Math.round(target * 1.05)} kcal
+                    Acceptable band ±5% · {Math.round(target * 0.95)}–
+                    {Math.round(target * 1.05)} kcal
                   </Text>
                 </View>
               </View>
@@ -290,19 +291,20 @@ export default function Generate() {
                 />
               </View>
 
+              {/* Always interactive — editing a field auto-enables override.
+                  (The old pointerEvents gating got stuck and blocked taps.) */}
               <MotiView
-                animate={{
-                  opacity: override ? 1 : 0.35,
-                  scale: override ? 1 : 0.98
-                }}
+                animate={{ opacity: override ? 1 : 0.55 }}
                 transition={{ type: "timing", duration: 200 }}
-                style={{ pointerEvents: override ? "auto" : "none" } as any}
               >
                 <View className="flex-row" style={{ gap: 8 }}>
                   <Stepper
                     label="Calories"
                     value={target}
-                    onChange={setTarget}
+                    onChange={(v) => {
+                      setTarget(v);
+                      if (!override) setOverride(true);
+                    }}
                     min={1000}
                     max={5000}
                     step={50}
@@ -311,7 +313,10 @@ export default function Generate() {
                   <Stepper
                     label="Protein"
                     value={protein}
-                    onChange={setProtein}
+                    onChange={(v) => {
+                      setProtein(v);
+                      if (!override) setOverride(true);
+                    }}
                     min={40}
                     max={300}
                     step={5}

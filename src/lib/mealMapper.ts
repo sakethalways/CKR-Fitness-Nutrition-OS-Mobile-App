@@ -1,4 +1,5 @@
-import { Meal } from "@/data/types";
+import { Allergen, Meal } from "@/data/types";
+import { parseAllergenText } from "@/lib/allergens";
 
 // Convert Supabase row to TypeScript Meal type
 export function mealFromRow(row: any): Meal {
@@ -9,14 +10,16 @@ export function mealFromRow(row: any): Meal {
     mealType: row.meal_type as "Breakfast" | "Lunch / Dinner" | "Snack",
     diet: row.diet as "Veg" | "Non-Veg",
     calBracket: row.cal_bracket,
-    isShootPriority: row.is_shoot_priority,
     quantities: row.quantities,
     calories: row.calories,
     proteinG: parseFloat(row.protein_g),
     carbsG: parseFloat(row.carbs_g),
     fatG: parseFloat(row.fat_g),
     clientTags: row.client_tags || [],
-    allergens: row.allergens || null,
+    // Robust to both schemas: text[] (post-migration) or legacy free text.
+    allergens: Array.isArray(row.allergens)
+      ? (row.allergens as Allergen[])
+      : parseAllergenText(row.allergens),
     notes: row.notes || null,
     rating: row.rating || 0,
     baseDescription: row.base_description || null,
@@ -35,7 +38,6 @@ export function mealToDb(meal: Partial<Meal>): any {
   if (meal.mealType !== undefined) db.meal_type = meal.mealType;
   if (meal.diet !== undefined) db.diet = meal.diet;
   if (meal.calBracket !== undefined) db.cal_bracket = meal.calBracket;
-  if (meal.isShootPriority !== undefined) db.is_shoot_priority = meal.isShootPriority;
   if (meal.quantities !== undefined) db.quantities = meal.quantities;
   if (meal.calories !== undefined) db.calories = meal.calories;
   if (meal.proteinG !== undefined) db.protein_g = meal.proteinG;

@@ -11,7 +11,8 @@ import {
   Goal,
   ActivityLevel,
   Gender,
-  Allergen
+  Allergen,
+  Role
 } from "@/data/types";
 import { mealFromRow, mealToDb } from "@/lib/mealMapper";
 import { seedMeals } from "@/data/meals";
@@ -141,6 +142,21 @@ const planToDb = (p: Partial<Plan>) => {
 // Store
 // ===========================================================================
 
+export type AdminStats = {
+  activeClients: number;
+  critical: number;
+  completed: number;
+  trainers: number;
+  avgRating: number;
+};
+
+export type ClientQuery = {
+  search?: string;
+  status?: ClientStatus;
+  limit?: number;
+  offset?: number;
+};
+
 type DataState = {
   trainers: Trainer[];
   clients: Client[];
@@ -149,8 +165,13 @@ type DataState = {
   hasHydrated: boolean;
   loading: boolean;
 
-  init: () => Promise<void>;
+  init: (role?: Role) => Promise<void>;
   dispose: () => Promise<void>;
+
+  // Scale helpers — query the server directly instead of holding everything in
+  // memory (the in-memory arrays are capped by PostgREST's 1000-row limit).
+  fetchAdminStats: () => Promise<AdminStats>;
+  searchClients: (q: ClientQuery) => Promise<Client[]>;
 
   addClient: (c: Omit<Client, "id" | "initials">) => Promise<Client>;
   updateClient: (id: string, patch: Partial<Client>) => Promise<void>;
@@ -188,17 +209,36 @@ export const useData = create<DataState>((set, get) => ({
   hasHydrated: false,
   loading: false,
 
-  init: async () => {
+  init: async (role) => {
     if (get().loading) return;
     set({ loading: true });
+    const isAdmin = role === "admin";
     try {
-      // Initial fetch — RLS scopes results to what the caller can see
+      // Initial fetch — RLS scopes results to what the caller can see.
+      // Capped at 1000 rows (PostgREST limit). For trainers this is plenty
+      // (their own clients); admins use searchClients()/fetchAdminStats() to
+      // reach beyond the cap. We surface truncation loudly instead of silently.
       const [tRes, cRes, pRes, mRes] = await Promise.all([
-        supabase.from("trainers").select("*").order("created_at"),
-        supabase.from("clients").select("*").order("created_at", { ascending: false }),
-        supabase.from("plans").select("*").order("created_at", { ascending: false }),
-        supabase.from("meals").select("*").order("meal_number, cal_bracket")
+        supabase.from("trainers").select("*").order("created_at").range(0, 999),
+        supabase
+          .from("clients")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(0, 999),
+        supabase
+          .from("plans")
+          .select("*")
+          .order("created_at", { ascending: false })
+          .range(0, 999),
+        supabase.from("meals").select("*").order("meal_number").order("cal_bracket")
       ]);
+
+      if ((cRes.data?.length ?? 0) >= 1000 || (pRes.data?.length ?? 0) >= 1000) {
+        // eslint-disable-next-line no-console
+        console.warn(
+          "[data] init hit the 1000-row cap — admin lists are truncated; use search/stats RPC for full coverage."
+        );
+      }
 
       let meals = (mRes.data ?? []).map(mealFromRow);
 
@@ -234,29 +274,36 @@ export const useData = create<DataState>((set, get) => ({
       trainersCh.subscribe();
       subscriptions.push(trainersCh);
 
-      const clientsCh = supabase.channel(`rt-clients-${ts}`);
-      clientsCh.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "clients" },
-        (payload) =>
-          set((s) => ({
-            clients: handlePayload(s.clients, payload, clientFromRow)
-          }))
-      );
-      clientsCh.subscribe();
-      subscriptions.push(clientsCh);
+      // clients/plans realtime is the high-volume firehose. For TRAINERS, RLS
+      // scopes the stream to their own clients (tiny) — safe to keep live. For
+      // ADMINS at scale it would be every client/plan change across every
+      // trainer, so we skip it; the admin refreshes on demand (pull-to-refresh,
+      // search, stats RPC) instead.
+      if (!isAdmin) {
+        const clientsCh = supabase.channel(`rt-clients-${ts}`);
+        clientsCh.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "clients" },
+          (payload) =>
+            set((s) => ({
+              clients: handlePayload(s.clients, payload, clientFromRow)
+            }))
+        );
+        clientsCh.subscribe();
+        subscriptions.push(clientsCh);
 
-      const plansCh = supabase.channel(`rt-plans-${ts}`);
-      plansCh.on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "plans" },
-        (payload) =>
-          set((s) => ({
-            plans: handlePayload(s.plans, payload, planFromRow)
-          }))
-      );
-      plansCh.subscribe();
-      subscriptions.push(plansCh);
+        const plansCh = supabase.channel(`rt-plans-${ts}`);
+        plansCh.on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "plans" },
+          (payload) =>
+            set((s) => ({
+              plans: handlePayload(s.plans, payload, planFromRow)
+            }))
+        );
+        plansCh.subscribe();
+        subscriptions.push(plansCh);
+      }
 
       const mealsCh = supabase.channel(`rt-meals-${ts}`);
       mealsCh.on(
@@ -279,6 +326,45 @@ export const useData = create<DataState>((set, get) => ({
   dispose: async () => {
     await dispose();
     set({ trainers: [], clients: [], plans: [], meals: [], hasHydrated: false });
+  },
+
+  fetchAdminStats: async () => {
+    const { data, error } = await supabase
+      .rpc("admin_dashboard_stats")
+      .single<{
+        active_clients: number;
+        critical: number;
+        completed: number;
+        active_trainers: number;
+        avg_rating: number;
+      }>();
+    if (error || !data) {
+      // Fallback to in-memory compute (correct for trainers / small datasets).
+      return computeAdminStats();
+    }
+    return {
+      activeClients: data.active_clients ?? 0,
+      critical: data.critical ?? 0,
+      completed: data.completed ?? 0,
+      trainers: data.active_trainers ?? 0,
+      avgRating: Number(data.avg_rating ?? 0)
+    };
+  },
+
+  searchClients: async (q) => {
+    const limit = q.limit ?? 30;
+    const offset = q.offset ?? 0;
+    let query = supabase
+      .from("clients")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .range(offset, offset + limit - 1);
+    const term = q.search?.trim();
+    if (term) query = query.ilike("name", `%${term}%`);
+    if (q.status) query = query.eq("status", q.status);
+    const { data, error } = await query;
+    if (error) throw error;
+    return (data ?? []).map(clientFromRow);
   },
 
   addClient: async (c) => {
@@ -403,6 +489,19 @@ export const useData = create<DataState>((set, get) => ({
       set((s) => ({
         plans: upsertById(s.plans, planFromRow(data))
       }));
+
+    // Feedback loop: roll these scores into each meal's rating so the
+    // generator learns. Runs via a SECURITY DEFINER RPC (meals are
+    // admin-write-only, but trainers rate). Non-fatal — never block the save.
+    if (Object.keys(ratings).length > 0) {
+      const { error: rErr } = await supabase.rpc("apply_meal_ratings", {
+        meal_ratings: ratings
+      });
+      if (rErr) {
+        // eslint-disable-next-line no-console
+        console.warn("[ratings] apply_meal_ratings failed", rErr.message);
+      }
+    }
   },
 
   addMeal: async (m) => {
@@ -448,9 +547,10 @@ export const useData = create<DataState>((set, get) => ({
     const { data, error } = await supabase
       .from("meals")
       .select("*")
-      .order("meal_number")
-      .order("cal_bracket");
+      .order("meal_number", { ascending: true })
+      .order("cal_bracket", { ascending: true });
     if (error) {
+      console.warn("[fetchMeals] error", error);
       // Fallback to seedMeals if fetch fails
       set({ meals: seedMeals });
       return;
@@ -490,7 +590,7 @@ const dispose = async () => {
   }
 };
 
-function upsertById<T extends { id: string }>(arr: T[], next: T): T[] {
+function upsertById<T extends { id: string | number }>(arr: T[], next: T): T[] {
   const idx = arr.findIndex((r) => r.id === next.id);
   if (idx === -1) return [next, ...arr];
   const copy = arr.slice();
@@ -499,7 +599,7 @@ function upsertById<T extends { id: string }>(arr: T[], next: T): T[] {
 }
 
 // Apply a Supabase realtime payload to a local array and return the new array.
-function handlePayload<T extends { id: string }>(
+function handlePayload<T extends { id: string | number }>(
   arr: T[],
   payload: any,
   mapper: (row: any) => T
@@ -563,7 +663,7 @@ export const computeTrainerStats = (trainerId: string) => {
   };
 };
 
-export const computeAdminStats = () => {
+export const computeAdminStats = (): AdminStats => {
   const allClients = useData.getState().clients;
   const active = allClients.filter((c) => c.status !== "Completed");
   const critical = active.filter((c) => c.status === "Critical").length;

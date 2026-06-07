@@ -5,10 +5,12 @@ import {
   StatusBar,
   Alert,
   KeyboardAvoidingView,
-  Platform
+  Platform,
+  ActivityIndicator,
+  InteractionManager
 } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
-import { ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, Trash2 } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Text } from "@/components/Text";
@@ -17,6 +19,7 @@ import { Button } from "@/components/Button";
 import { BottomBar } from "@/components/BottomBar";
 import { Sheet } from "@/components/Sheet";
 import { MealForm, MealFormData } from "@/components/MealForm";
+import { PlanLoadingScreen } from "@/components/PlanLoadingScreen";
 import { useData } from "@/store/data";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
@@ -25,6 +28,7 @@ export default function MealFormScreen() {
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id?: string }>();
   const meals = useData((s) => s.meals);
+  const hasHydrated = useData((s) => s.hasHydrated);
   const addMeal = useData((s) => s.addMeal);
   const updateMeal = useData((s) => s.updateMeal);
   const deleteMeal = useData((s) => s.deleteMeal);
@@ -33,6 +37,15 @@ export default function MealFormScreen() {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
 
+  // Show the screen shell (header) + spinner immediately, then mount the heavy
+  // form AFTER the navigation animation settles — so tapping a meal opens
+  // smoothly instead of janking / flashing the previous screen.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setReady(true));
+    return () => task.cancel();
+  }, []);
+
   // Find meal if editing
   const meal = useMemo(
     () => (id ? meals.find((m) => m.id === Number(id)) : undefined),
@@ -40,6 +53,12 @@ export default function MealFormScreen() {
   );
 
   const isEditMode = !!meal;
+
+  // Editing a meal but the store hasn't hydrated yet → show a loader instead
+  // of briefly flashing a blank "ADD MEAL" form.
+  if (id && !meal && !hasHydrated) {
+    return <PlanLoadingScreen title="Loading meal" subtitle="Fetching details…" />;
+  }
 
   const handleCancel = () => {
     if (isDirty) {
@@ -140,36 +159,48 @@ export default function MealFormScreen() {
           <Text variant="label" className="text-ink-3">
             {isEditMode ? "EDIT MEAL" : "ADD MEAL"}
           </Text>
-          <View className="w-11" />
-        </View>
-
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{
-            paddingHorizontal: 20,
-            paddingBottom: insets.bottom + 120
-          }}
-        >
-          <MealForm
-            initialMeal={meal}
-            onSubmit={handleSubmit}
-            isLoading={loading}
-          />
-        </ScrollView>
-
-        {/* Delete Button - only in edit mode */}
-        {isEditMode && (
-          <View className="absolute bottom-20 left-0 right-0 px-5">
-            <Button
-              label="Delete Meal"
-              variant="primary"
-              tone="danger"
-              fullWidth
+          {isEditMode ? (
+            <Pressable
               onPress={handleDelete}
               disabled={loading}
-            />
+              haptic="light"
+              scaleTo={0.96}
+              className="flex-row items-center px-3 h-9 rounded-full border border-danger/40 bg-danger/15"
+            >
+              <Trash2 size={13} color={colors.danger} strokeWidth={2.2} />
+              <Text
+                variant="caption"
+                className="text-danger ml-1.5"
+                style={{ fontFamily: "Inter_600SemiBold" }}
+              >
+                Delete
+              </Text>
+            </Pressable>
+          ) : (
+            <View className="w-11" />
+          )}
+        </View>
+
+        {!ready ? (
+          <View className="flex-1 items-center justify-center pb-24">
+            <ActivityIndicator color={colors.lime} />
           </View>
+        ) : (
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{
+              paddingHorizontal: 20,
+              paddingBottom: insets.bottom + 120
+            }}
+          >
+            <MealForm
+              initialMeal={meal}
+              onSubmit={handleSubmit}
+              isLoading={loading}
+            />
+          </ScrollView>
         )}
+
       </SafeAreaView>
 
       {/* Delete Confirmation Modal */}
@@ -184,20 +215,19 @@ export default function MealFormScreen() {
             Are you sure you want to delete "{meal?.mealName}"? It will be
             removed from the database and cannot be recovered.
           </Text>
-          <View className="flex-row gap-3 mt-4">
+          <View className="gap-3 mt-4">
+            <Button
+              label="Delete"
+              variant="danger"
+              fullWidth
+              onPress={confirmDelete}
+              disabled={loading}
+            />
             <Button
               label="Cancel"
               variant="ghost"
               fullWidth
               onPress={() => setDeleteModalVisible(false)}
-            />
-            <Button
-              label="Delete"
-              variant="primary"
-              fullWidth
-              tone="danger"
-              onPress={confirmDelete}
-              disabled={loading}
             />
           </View>
         </View>

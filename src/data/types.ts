@@ -5,7 +5,41 @@ export type ClientType =
   | "Sweet Craving"
   | "Standard";
 export type FoodPref = "Veg" | "Non-Veg" | "Both";
-export type Allergen = "Dairy" | "Gluten" | "Nuts" | "Eggs" | "None";
+export type Allergen =
+  | "Dairy"
+  | "Gluten"
+  | "Nuts"
+  | "Eggs"
+  | "Soy"
+  | "Shellfish"
+  | "Fish"
+  | "Sesame"
+  | "None";
+
+// All allergens a client can be flagged with (includes "None" = no allergies).
+export const ALLERGENS: Allergen[] = [
+  "Dairy",
+  "Gluten",
+  "Nuts",
+  "Eggs",
+  "Soy",
+  "Shellfish",
+  "Fish",
+  "Sesame",
+  "None"
+];
+
+// Allergens a meal can CONTAIN (no "None" — absence is an empty array).
+export const MEAL_ALLERGENS: Allergen[] = [
+  "Dairy",
+  "Gluten",
+  "Nuts",
+  "Eggs",
+  "Soy",
+  "Shellfish",
+  "Fish",
+  "Sesame"
+];
 export type ActivityLevel =
   | "Sedentary"
   | "Lightly Active"
@@ -77,14 +111,14 @@ export type Meal = {
   mealType: MealType;
   diet: "Veg" | "Non-Veg";
   calBracket: string;
-  isShootPriority: boolean;
   quantities: string;
   calories: number;
   proteinG: number;
   carbsG: number;
   fatG: number;
   clientTags: string[];
-  allergens: string | null;
+  // Structured allergen tags the meal CONTAINS (matched against client allergens).
+  allergens: Allergen[];
   notes: string | null;
   rating: number;
   baseDescription: string | null;

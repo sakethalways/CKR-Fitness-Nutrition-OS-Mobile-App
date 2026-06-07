@@ -377,7 +377,7 @@ export default function ClientProfile() {
         sourcePlanId: plan.id,
         sourceClientName: client.name,
         savedByAdminId: user.admin.id,
-        selectedMealIds: plan.selectedMealIds,
+        selectedMealIds: (plan.selectedMealIds ?? []).map(String),
         calorieRangeLow: plan.calorieRangeLow,
         calorieRangeHigh: plan.calorieRangeHigh,
         tagSummary: `${client.goal} · ${client.foodPref} · ${client.clientTypes.join(" / ")}`
@@ -403,7 +403,8 @@ export default function ClientProfile() {
 
       const sections = [
         { slot: "Breakfast", meals: meals.filter((m) => m.mealType === "Breakfast") },
-        { slot: "Lunch / Dinner", meals: meals.filter((m) => m.mealType === "Lunch / Dinner") }
+        { slot: "Lunch / Dinner", meals: meals.filter((m) => m.mealType === "Lunch / Dinner") },
+        { slot: "Snack", meals: meals.filter((m) => m.mealType === "Snack") }
       ].filter((s) => s.meals.length > 0);
 
       const html = buildPlanHTML(client, sections, {

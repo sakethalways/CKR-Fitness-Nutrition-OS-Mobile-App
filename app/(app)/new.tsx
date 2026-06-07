@@ -1,5 +1,11 @@
-import React from "react";
-import { View, StatusBar } from "react-native";
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  StatusBar,
+  ActivityIndicator,
+  InteractionManager,
+  Alert
+} from "react-native";
 import { router } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -13,13 +19,20 @@ import { useNotifications } from "@/store/notifications";
 import { getAdminId } from "@/lib/admin";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
-import { Alert } from "react-native";
 
 export default function NewClient() {
   const user = useAuth((s) => s.user)!;
   const addClient = useData((s) => s.addClient);
   const pushNotification = useNotifications((s) => s.safePush);
   const trainer = user.role === "trainer" ? user.trainer : null;
+
+  // Show the shell + spinner instantly; mount the heavy form after the
+  // navigation animation settles so opening "New Client" feels immediate.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => setReady(true));
+    return () => task.cancel();
+  }, []);
 
   return (
     <View className="flex-1 bg-bg">
@@ -43,6 +56,11 @@ export default function NewClient() {
           <View className="w-11 h-11" />
         </View>
 
+        {!ready ? (
+          <View className="flex-1 items-center justify-center pb-24">
+            <ActivityIndicator color={colors.lime} />
+          </View>
+        ) : (
         <ClientForm
           headerTitle="Client details"
           headerSubtitle="Fill once. You can update any field later from the client's profile."
@@ -74,6 +92,7 @@ export default function NewClient() {
             }
           }}
         />
+        )}
       </SafeAreaView>
     </View>
   );

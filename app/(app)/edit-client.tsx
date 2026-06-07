@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import { View, StatusBar, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { ArrowLeft } from "lucide-react-native";
@@ -15,10 +15,15 @@ import * as haptics from "@/lib/haptics";
 export default function EditClient() {
   const { clientId } = useLocalSearchParams<{ clientId: string }>();
   const updateClient = useData((s) => s.updateClient);
-  // subscribe so we re-mount with fresh data after save
+  // Subscribe so the client is found once it loads…
   useData((s) => s.clients);
 
-  const client = clientId ? selectClient(clientId) : undefined;
+  // …but snapshot it the first time it's available, so realtime updates can't
+  // re-feed the form mid-edit and stomp on values the user is typing.
+  const live = clientId ? selectClient(clientId) : undefined;
+  const snapshot = useRef<typeof live>(undefined);
+  if (live && !snapshot.current) snapshot.current = live;
+  const client = snapshot.current;
 
   if (!client) {
     return (

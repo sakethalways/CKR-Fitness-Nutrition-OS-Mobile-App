@@ -1,6 +1,10 @@
 import { Meal } from "./types";
+import { parseAllergenText } from "@/lib/allergens";
 
-export const seedMeals: Meal[] = [
+// Legacy seed rows (old shape: free-text `allergens`, `isShootPriority`).
+// Kept as a fallback catalogue and adapted to the current Meal type below.
+// Production meals live in the DB and are re-added separately.
+const legacySeed = [
   // MEAL 1 - OVERNIGHT OATS (4 brackets)
   { id: 1, mealNumber: 1, mealName: "Overnight Oats", mealType: "Breakfast", diet: "Veg", calBracket: "350–400 kcal", isShootPriority: false, quantities: "Rolled oats 40g · Unsweetened almond milk 150ml · Whey protein isolate 25g · Chia seeds 8g · Mixed berries 50g · Almonds 8g", calories: 377, proteinG: 30.0, carbsG: 38.0, fatG: 12.0, clientTags: ["Sweet Craving", "Busy", "Standard"], allergens: "Nuts · Dairy if using whey isolate", notes: "Verified MFP — 377 cal, 30g protein.", rating: 0, baseDescription: "Unsweetened almond milk 150ml · Chia seeds 8g · Mixed berries 50g · Almonds 8g", proteinAnchor: "Whey protein isolate — only oats + protein isolate change", mealSection: "Breakfast" },
   { id: 2, mealNumber: 1, mealName: "Overnight Oats", mealType: "Breakfast", diet: "Veg", calBracket: "400–450 kcal", isShootPriority: true, quantities: "Rolled oats 50g · Unsweetened almond milk 150ml · Whey protein isolate 30g · Chia seeds 8g · Mixed berries 50g · Almonds 8g", calories: 434, proteinG: 35.0, carbsG: 46.0, fatG: 13.0, clientTags: ["Sweet Craving", "Busy", "Standard"], allergens: "Nuts · Dairy if using whey isolate", notes: "SHOOT PRIORITY. Verified MFP — 434 cal, 35g protein.", rating: 0, baseDescription: "Unsweetened almond milk 150ml · Chia seeds 8g · Mixed berries 50g · Almonds 8g", proteinAnchor: "Whey protein isolate — only oats + protein isolate change", mealSection: "Breakfast" },
@@ -83,3 +87,13 @@ export const seedMeals: Meal[] = [
   { id: 53, mealNumber: 14, mealName: "Protein Smoothie", mealType: "Snack", diet: "Veg", calBracket: "200–250 kcal", isShootPriority: true, quantities: "Whey protein isolate 30g · Banana 100g · Unsweetened almond milk 200ml", calories: 232, proteinG: 26.0, carbsG: 26.0, fatG: 3.0, clientTags: ["Sweet Craving", "Busy", "Standard"], allergens: "Nuts · Dairy if whey", notes: "SHOOT PRIORITY. Verified MFP — 232 cal, 26g protein.", rating: 0, baseDescription: "Unsweetened almond milk 200ml = 26 cal", proteinAnchor: "Whey protein isolate + Banana — both change", mealSection: "Snack" },
   { id: 54, mealNumber: 14, mealName: "Protein Smoothie", mealType: "Snack", diet: "Veg", calBracket: "250–300 kcal", isShootPriority: true, quantities: "Whey protein isolate 35g · Banana 120g · Unsweetened almond milk 200ml", calories: 268, proteinG: 31.0, carbsG: 31.0, fatG: 4.0, clientTags: ["Sweet Craving", "Busy", "Standard"], allergens: "Nuts · Dairy if whey", notes: "SHOOT PRIORITY. Verified MFP — 268 cal, 31g protein.", rating: 0, baseDescription: "Unsweetened almond milk 200ml = 26 cal", proteinAnchor: "Whey protein isolate + Banana — both change", mealSection: "Snack" }
 ];
+
+// Adapt legacy rows to the current Meal type: parse the free-text allergen
+// string into structured tags and drop the removed `isShootPriority` field.
+export const seedMeals: Meal[] = legacySeed.map((m): Meal => {
+  const { isShootPriority, allergens, ...rest } = m as Record<string, unknown> & {
+    allergens: string | null;
+  };
+  void isShootPriority;
+  return { ...(rest as Omit<Meal, "allergens">), allergens: parseAllergenText(allergens) };
+});

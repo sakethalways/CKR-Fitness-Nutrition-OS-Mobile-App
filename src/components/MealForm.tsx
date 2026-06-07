@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from "react";
-import { View } from "react-native";
-import { Meal, MealType, MEAL_TYPES } from "@/data/types";
+import { View, Alert } from "react-native";
+import { Allergen, Meal, MealType, MEAL_TYPES, MEAL_ALLERGENS } from "@/data/types";
 import { Text } from "@/components/Text";
 import { Input } from "@/components/Input";
 import { Textarea } from "@/components/Textarea";
@@ -21,19 +21,33 @@ export type MealFormData = {
   proteinG: number;
   carbsG: number;
   fatG: number;
-  isShootPriority: boolean;
   clientTags: string[];
-  allergens: string;
+  allergens: Allergen[];
   baseDescription: string;
   proteinAnchor: string;
   notes: string;
   rating: number;
+  mealSection: string;
 };
 
 const CALORIE_BRACKETS = {
-  "Breakfast": ["350–400 kcal", "400–450 kcal", "450–500 kcal", "500–550 kcal"],
-  "Lunch / Dinner": ["350–400 kcal", "400–450 kcal", "450–500 kcal", "500–550 kcal"],
-  "Snack": ["150–200 kcal", "200–250 kcal", "250–300 kcal"]
+  "Breakfast": [
+    { value: "350–400 kcal", label: "350–400" },
+    { value: "400–450 kcal", label: "400–450" },
+    { value: "450–500 kcal", label: "450–500" },
+    { value: "500–550 kcal", label: "500–550" }
+  ],
+  "Lunch / Dinner": [
+    { value: "350–400 kcal", label: "350–400" },
+    { value: "400–450 kcal", label: "400–450" },
+    { value: "450–500 kcal", label: "450–500" },
+    { value: "500–550 kcal", label: "500–550" }
+  ],
+  "Snack": [
+    { value: "150–200 kcal", label: "150–200" },
+    { value: "200–250 kcal", label: "200–250" },
+    { value: "250–300 kcal", label: "250–300" }
+  ]
 };
 
 const CLIENT_TAG_OPTIONS = [
@@ -42,6 +56,12 @@ const CLIENT_TAG_OPTIONS = [
   "Standard",
   "Vegetarian",
   "Veg"
+];
+
+const MEAL_TYPE_OPTIONS = MEAL_TYPES.map(t => ({ value: t, label: t }));
+const DIET_OPTIONS = [
+  { value: "Veg" as const, label: "Veg" },
+  { value: "Non-Veg" as const, label: "Non-Veg" }
 ];
 
 export interface MealFormProps {
@@ -62,16 +82,17 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
     const [proteinG, setProteinG] = useState(initialMeal?.proteinG || 0);
     const [carbsG, setCarbsG] = useState(initialMeal?.carbsG || 0);
     const [fatG, setFatG] = useState(initialMeal?.fatG || 0);
-    const [isShootPriority, setIsShootPriority] = useState(initialMeal?.isShootPriority || false);
     const [clientTags, setClientTags] = useState<string[]>(initialMeal?.clientTags || []);
-    const [allergens, setAllergens] = useState(initialMeal?.allergens || "");
+    const [allergens, setAllergens] = useState<Allergen[]>(initialMeal?.allergens || []);
     const [baseDescription, setBaseDescription] = useState(initialMeal?.baseDescription || "");
     const [proteinAnchor, setProteinAnchor] = useState(initialMeal?.proteinAnchor || "");
     const [notes, setNotes] = useState(initialMeal?.notes || "");
     const [rating, setRating] = useState(initialMeal?.rating || 0);
 
-    // Validation errors
-    const [errors, setErrors] = useState<Partial<MealFormData>>({});
+    // Validation errors (field → has-error flag)
+    const [errors, setErrors] = useState<
+      Partial<Record<keyof MealFormData, boolean>>
+    >({});
 
     const availableBrackets = useMemo(
       () => CALORIE_BRACKETS[mealType] || [],
@@ -80,43 +101,58 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
 
     // Reset calBracket if mealType changes and current bracket not in new type
     React.useEffect(() => {
-      if (!availableBrackets.includes(calBracket)) {
-        setCalBracket(availableBrackets[0] || "350–400 kcal");
+      const bracketValues = availableBrackets.map(b => b.value);
+      if (!bracketValues.includes(calBracket)) {
+        setCalBracket(availableBrackets[0]?.value || "350–400 kcal");
       }
     }, [mealType, availableBrackets, calBracket]);
 
-    const validate = (): boolean => {
-      const newErrors: Partial<MealFormData> = {};
+    // Returns a list of human-readable problems (empty = valid).
+    const validate = (): string[] => {
+      const newErrors: Partial<Record<keyof MealFormData, boolean>> = {};
+      const problems: string[] = [];
 
       if (!mealName || mealName.trim().length < 3) {
         newErrors.mealName = true;
+        problems.push("Meal name (at least 3 characters)");
       }
       if (mealNumber < 1) {
         newErrors.mealNumber = true;
+        problems.push("Meal number");
       }
       if (!quantities || quantities.trim().length < 10) {
         newErrors.quantities = true;
+        problems.push("Quantities (at least 10 characters)");
       }
       if (calories <= 0) {
         newErrors.calories = true;
+        problems.push("Calories (must be greater than 0)");
       }
       if (proteinG < 0) {
         newErrors.proteinG = true;
+        problems.push("Protein cannot be negative");
       }
       if (carbsG < 0) {
         newErrors.carbsG = true;
+        problems.push("Carbs cannot be negative");
       }
       if (fatG < 0) {
         newErrors.fatG = true;
+        problems.push("Fat cannot be negative");
       }
 
       setErrors(newErrors);
-      return Object.keys(newErrors).length === 0;
+      return problems;
     };
 
     const handleSubmit = () => {
-      if (!validate()) {
+      const problems = validate();
+      if (problems.length > 0) {
         haptics.warning();
+        Alert.alert(
+          "Can't save yet",
+          "Please fix the following:\n\n• " + problems.join("\n• ")
+        );
         return;
       }
 
@@ -131,13 +167,14 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
         proteinG: Math.round(proteinG * 10) / 10,
         carbsG: Math.round(carbsG * 10) / 10,
         fatG: Math.round(fatG * 10) / 10,
-        isShootPriority,
         clientTags,
-        allergens: allergens.trim(),
+        allergens,
         baseDescription: baseDescription.trim(),
         proteinAnchor: proteinAnchor.trim(),
         notes: notes.trim(),
-        rating: Math.min(10, Math.max(0, Math.round(rating)))
+        rating: Math.min(10, Math.max(0, Math.round(rating))),
+        // Section mirrors the meal type — keeps DB meal_section consistent.
+        mealSection: mealType
       };
 
       onSubmit(formData);
@@ -168,8 +205,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                 setMealName(v);
                 handleFieldChange("mealName");
               }}
-              error={errors.mealName}
-              errorText="Min 3 characters required"
+              error={errors.mealName ? "Min 3 characters required" : undefined}
             />
             <View className="flex-row gap-3">
               <View className="flex-1">
@@ -178,7 +214,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                 </Text>
                 <Stepper
                   value={mealNumber}
-                  onChangeValue={(v) => {
+                  onChange={(v) => {
                     setMealNumber(Math.max(1, v));
                     handleFieldChange("mealNumber");
                   }}
@@ -191,9 +227,9 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                   Diet Type
                 </Text>
                 <SegmentedControl
-                  options={["Veg", "Non-Veg"]}
+                  options={DIET_OPTIONS}
                   value={diet}
-                  onChangeValue={(v) => setDiet(v as "Veg" | "Non-Veg")}
+                  onChange={(v) => setDiet(v as "Veg" | "Non-Veg")}
                 />
               </View>
             </View>
@@ -202,9 +238,9 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                 Meal Type
               </Text>
               <SegmentedControl
-                options={MEAL_TYPES}
+                options={MEAL_TYPE_OPTIONS}
                 value={mealType}
-                onChangeValue={(v) => setMealType(v as MealType)}
+                onChange={(v) => setMealType(v as MealType)}
               />
             </View>
             <View>
@@ -214,7 +250,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
               <SegmentedControl
                 options={availableBrackets}
                 value={calBracket}
-                onChangeValue={setCalBracket}
+                onChange={setCalBracket}
               />
             </View>
           </View>
@@ -231,7 +267,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                 <Stepper
                   label="Calories"
                   value={calories}
-                  onChangeValue={(v) => {
+                  onChange={(v) => {
                     setCalories(Math.max(0, v));
                     handleFieldChange("calories");
                   }}
@@ -249,7 +285,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                     handleFieldChange("proteinG");
                   }}
                   keyboardType="decimal-pad"
-                  error={errors.proteinG}
+                  error={errors.proteinG ? "Invalid" : undefined}
                 />
               </View>
             </View>
@@ -264,7 +300,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                     handleFieldChange("carbsG");
                   }}
                   keyboardType="decimal-pad"
-                  error={errors.carbsG}
+                  error={errors.carbsG ? "Invalid" : undefined}
                 />
               </View>
               <View className="flex-1">
@@ -277,7 +313,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
                     handleFieldChange("fatG");
                   }}
                   keyboardType="decimal-pad"
-                  error={errors.fatG}
+                  error={errors.fatG ? "Invalid" : undefined}
                 />
               </View>
             </View>
@@ -294,44 +330,41 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
               setQuantities(v);
               handleFieldChange("quantities");
             }}
-            error={errors.quantities}
-            errorText="Min 10 characters required"
             minHeight={80}
+          />
+          {errors.quantities ? (
+            <Text variant="caption" className="text-danger mt-1.5">
+              Min 10 characters required
+            </Text>
+          ) : null}
+        </View>
+
+        {/* TAGS SECTION */}
+        <View className="mb-6">
+          <Text variant="label" className="text-ink-3 mb-3">
+            CLIENT TAGS
+          </Text>
+          <ChipSelector
+            options={CLIENT_TAG_OPTIONS}
+            value={clientTags}
+            onChange={setClientTags}
           />
         </View>
 
-        {/* TAGS & PRIORITY SECTION */}
+        {/* ALLERGENS SECTION — structured tags, matched against client allergens */}
         <View className="mb-6">
-          <Text variant="label" className="text-ink-3 mb-3">
-            TAGS & PRIORITY
+          <Text variant="label" className="text-ink-3 mb-2">
+            ALLERGENS (CONTAINS)
           </Text>
-          <View className="gap-3">
-            <View>
-              <Text variant="caption" className="text-ink-3 mb-2">
-                Client Tags
-              </Text>
-              <ChipSelector
-                options={CLIENT_TAG_OPTIONS}
-                selected={clientTags}
-                onSelectionChange={setClientTags}
-              />
-            </View>
-            <Pressable
-              onPress={() => setIsShootPriority(!isShootPriority)}
-              className="flex-row items-center gap-2 p-3 rounded-lg border border-line bg-surface"
-            >
-              <View
-                className={`w-5 h-5 rounded border-2 items-center justify-center ${
-                  isShootPriority ? "bg-lime border-lime" : "border-line"
-                }`}
-              >
-                {isShootPriority && <Text className="text-black text-sm">✓</Text>}
-              </View>
-              <Text variant="body" className="text-ink">
-                Shoot Priority (Featured)
-              </Text>
-            </Pressable>
-          </View>
+          <Text variant="caption" className="text-ink-3 mb-3">
+            Select every allergen this meal contains. Clients flagged with any of
+            these will never be served this meal.
+          </Text>
+          <ChipSelector<Allergen>
+            options={MEAL_ALLERGENS}
+            value={allergens}
+            onChange={setAllergens}
+          />
         </View>
 
         {/* METADATA SECTION */}
@@ -340,15 +373,6 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
             METADATA
           </Text>
           <View className="gap-3">
-            <Input
-              label="Allergens"
-              placeholder="e.g., Nuts · Dairy if whey"
-              value={allergens}
-              onChangeText={(v) => {
-                setAllergens(v);
-                handleFieldChange("allergens");
-              }}
-            />
             <Textarea
               label="Base Description"
               placeholder="Fixed ingredients and calories..."
@@ -376,7 +400,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
               </Text>
               <Stepper
                 value={rating}
-                onChangeValue={(v) => setRating(Math.min(10, Math.max(0, v)))}
+                onChange={(v) => setRating(Math.min(10, Math.max(0, v)))}
                 min={0}
                 max={10}
               />

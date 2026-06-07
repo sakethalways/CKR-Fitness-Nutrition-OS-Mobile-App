@@ -86,7 +86,8 @@ export default function Trainers() {
                       type: "spring",
                       damping: 18,
                       stiffness: 200,
-                      delay: 50 + i * 35
+                      // Cap stagger so long lists don't animate in over 1s+.
+                      delay: 50 + Math.min(i, 8) * 35
                     }}
                   >
                     <Pressable

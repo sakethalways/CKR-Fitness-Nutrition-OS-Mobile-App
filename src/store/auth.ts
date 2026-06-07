@@ -146,20 +146,42 @@ export const useAuth = create<AuthState>((set, get) => ({
     // eslint-disable-next-line no-console
     console.log("[auth] init step 1 — entering");
     set({ initializing: true });
+
+    const sessionPromise = supabase.auth.getSession();
+
+    // Background recovery: getSession() can block on the auth lock while
+    // supabase-js refreshes an expired token over the network (every cold
+    // start after token expiry). If that resolves AFTER our race timeout, we
+    // still restore the user — so a slow refresh never strands a logged-in
+    // user on the login screen.
+    sessionPromise
+      .then(({ data }) => {
+        if (data?.session && !get().user) {
+          const u = userFromSession(data.session);
+          if (u) {
+            // eslint-disable-next-line no-console
+            console.log("[auth] init — late session recovered");
+            set({ user: u, hasHydrated: true });
+            enrichUserFromDb(u);
+            registerPushTokenForUser(data.session.user.id).catch(() => {});
+          }
+        }
+      })
+      .catch(() => {});
+
     try {
       // eslint-disable-next-line no-console
       console.log("[auth] init step 2 — calling getSession()");
-      const sessionPromise = supabase.auth.getSession();
       const { data } = (await Promise.race([
         sessionPromise,
         new Promise<{ data: { session: null } }>((resolve) =>
           setTimeout(() => {
             // eslint-disable-next-line no-console
             console.warn(
-              "[auth] init — getSession timed out after 4s, treating as signed-out"
+              "[auth] init — getSession slow (>8s); showing login, will recover if a session arrives"
             );
             resolve({ data: { session: null } });
-          }, 4000)
+          }, 8000)
         )
       ])) as { data: { session: import("@supabase/supabase-js").Session | null } };
 
@@ -179,13 +201,14 @@ export const useAuth = create<AuthState>((set, get) => ({
           // and tokens that rolled get updated.
           registerPushTokenForUser(data.session.user.id).catch(() => {});
         }
-      } else {
+      } else if (!get().user) {
+        // Only null out if background recovery hasn't already restored a user.
         set({ user: null });
       }
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error("[auth] init — top-level error", e);
-      set({ user: null });
+      if (!get().user) set({ user: null });
     } finally {
       // eslint-disable-next-line no-console
       console.log("[auth] init step 5 — finally, marking hydrated");

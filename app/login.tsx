@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, KeyboardAvoidingView, Platform } from "react-native";
 import { MotiView } from "moti";
 import { router } from "expo-router";
@@ -25,6 +25,16 @@ export default function LoginScreen() {
 
   const signInTrainer = useAuth((s) => s.signInTrainer);
   const signInAdmin = useAuth((s) => s.signInAdmin);
+  const user = useAuth((s) => s.user);
+
+  // If a session is recovered late (e.g. a slow token refresh resolved after
+  // we'd already routed here), navigate into the app instead of stranding the
+  // already-signed-in user on the login screen.
+  useEffect(() => {
+    if (user) {
+      router.replace(user.role === "admin" ? "/overview" : "/clients");
+    }
+  }, [user]);
 
   const onSubmit = async () => {
     setError(null);
@@ -33,11 +43,11 @@ export default function LoginScreen() {
       if (mode === "trainer") {
         await signInTrainer(mobile, password);
         haptics.success();
-        router.replace("/(app)/clients");
+        router.replace("/clients");
       } else {
         await signInAdmin(password);
         haptics.success();
-        router.replace("/(app)/overview");
+        router.replace("/overview");
       }
     } catch (e: any) {
       setError(e.message ?? "Something went wrong");
