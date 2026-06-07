@@ -20,7 +20,6 @@ import { Card } from "@/components/Card";
 import { Button } from "@/components/Button";
 import { BottomBar } from "@/components/BottomBar";
 import { Stepper } from "@/components/Stepper";
-import { Toggle } from "@/components/Toggle";
 import { MacroBar } from "@/components/MacroBar";
 import { AnimatedNumber } from "@/components/AnimatedNumber";
 import { selectClient, useData } from "@/store/data";
@@ -38,7 +37,6 @@ export default function Generate() {
   );
   const updateClient = useData((s) => s.updateClient);
 
-  const [override, setOverride] = useState(false);
   const [target, setTarget] = useState(0);
   const [protein, setProtein] = useState(0);
 
@@ -72,9 +70,10 @@ export default function Generate() {
     );
   }
 
-  const macros = override
-    ? macrosFromTarget(target, client.weight, client.goal, protein)
-    : { protein: auto.protein, carbs: auto.carbs, fat: auto.fat };
+  // Fields are always editable; macros derive from the current target/protein.
+  // When untouched these equal the auto values (identical formulas in calc.ts).
+  const macros = macrosFromTarget(target, client.weight, client.goal, protein);
+  const isCustom = target !== auto.target || protein !== auto.protein;
 
   const onContinue = async () => {
     try {
@@ -263,67 +262,60 @@ export default function Generate() {
               />
             </Card>
 
-            {/* Manual override */}
+            {/* Adjust targets — always editable. Tap +/-, or type a value.
+                "Reset to auto" restores the calculated numbers. */}
             <Card delay={240} className="mt-4">
               <View className="flex-row items-center justify-between mb-3">
                 <View className="flex-row items-center">
                   <Settings2
                     size={13}
-                    color={override ? colors.lime : colors.ink3}
+                    color={isCustom ? colors.lime : colors.ink3}
                     strokeWidth={2.4}
                   />
                   <Text
                     variant="label"
-                    className={override ? "text-lime ml-1.5" : "text-ink-3 ml-1.5"}
+                    className={isCustom ? "text-lime ml-1.5" : "text-ink-3 ml-1.5"}
                   >
-                    MANUAL OVERRIDE
+                    {isCustom ? "ADJUSTED TARGETS" : "ADJUST TARGETS"}
                   </Text>
                 </View>
-                <Toggle
-                  value={override}
-                  onChange={(v) => {
-                    setOverride(v);
-                    if (!v) {
+                {isCustom ? (
+                  <Pressable
+                    onPress={() => {
                       setTarget(auto.target);
                       setProtein(auto.protein);
-                    }
-                  }}
-                />
+                      haptics.tap();
+                    }}
+                    hitSlop={10}
+                    className="px-2.5 py-1 rounded-full border border-line bg-white/[0.04]"
+                  >
+                    <Text variant="caption" className="text-ink-2">
+                      Reset to auto
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
 
-              {/* Always interactive — editing a field auto-enables override.
-                  (The old pointerEvents gating got stuck and blocked taps.) */}
-              <MotiView
-                animate={{ opacity: override ? 1 : 0.55 }}
-                transition={{ type: "timing", duration: 200 }}
-              >
-                <View className="flex-row" style={{ gap: 8 }}>
-                  <Stepper
-                    label="Calories"
-                    value={target}
-                    onChange={(v) => {
-                      setTarget(v);
-                      if (!override) setOverride(true);
-                    }}
-                    min={1000}
-                    max={5000}
-                    step={50}
-                    suffix="kcal"
-                  />
-                  <Stepper
-                    label="Protein"
-                    value={protein}
-                    onChange={(v) => {
-                      setProtein(v);
-                      if (!override) setOverride(true);
-                    }}
-                    min={40}
-                    max={300}
-                    step={5}
-                    suffix="g"
-                  />
-                </View>
-              </MotiView>
+              <View className="flex-row" style={{ gap: 8 }}>
+                <Stepper
+                  label="Calories"
+                  value={target}
+                  onChange={setTarget}
+                  min={1000}
+                  max={5000}
+                  step={50}
+                  suffix="kcal"
+                />
+                <Stepper
+                  label="Protein"
+                  value={protein}
+                  onChange={setProtein}
+                  min={40}
+                  max={300}
+                  step={5}
+                  suffix="g"
+                />
+              </View>
             </Card>
 
             {/* Macros breakdown */}

@@ -8,17 +8,11 @@ const ACTIVITY_FACTOR: Record<ActivityLevel, number> = {
 };
 
 const GOAL_DELTA: Record<Goal, number> = {
-  "Fat Loss": -400,
-  "Muscle Gain": 300,
-  Maintain: 0,
-  Recomp: -150
+  "Fat Loss": -400
 };
 
 const PROTEIN_PER_KG: Record<Goal, number> = {
-  "Fat Loss": 2.0,
-  "Muscle Gain": 2.0,
-  Maintain: 1.6,
-  Recomp: 1.9
+  "Fat Loss": 2.0
 };
 
 export type CalcInput = {

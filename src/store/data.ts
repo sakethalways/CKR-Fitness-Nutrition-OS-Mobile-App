@@ -62,7 +62,9 @@ const clientFromRow = (r: any): Client => ({
   gender: r.gender as Gender,
   weight: Number(r.weight),
   height: Number(r.height),
-  goal: r.goal as Goal,
+  // App is fat-loss only now. Older rows may still carry "Muscle Gain"/etc.;
+  // normalize so calc.ts never looks up an undefined goal (which → NaN target).
+  goal: "Fat Loss" as Goal,
   activityLevel: r.activity_level as ActivityLevel,
   clientTypes: (r.client_types ?? []) as ClientType[],
   foodPref: r.food_pref as FoodPref,

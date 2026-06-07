@@ -92,7 +92,8 @@ export function ClientForm({
   const insets = useSafeAreaInsets();
 
   const [name, setName] = useState(initial?.name ?? "");
-  const [goal, setGoal] = useState<Goal>(initial?.goal ?? "Fat Loss");
+  // App is fat-loss only — no picker, goal is fixed.
+  const goal: Goal = "Fat Loss";
   const [gender, setGender] = useState<Gender>(initial?.gender ?? "F");
   const [age, setAge] = useState(initial?.age ?? 28);
   const [weight, setWeight] = useState(initial?.weight ?? 62);
@@ -274,19 +275,6 @@ export function ClientForm({
                 { value: "Active", label: "Active" },
                 { value: "Critical", label: "Critical" },
                 { value: "On Hold", label: "On Hold" }
-              ]}
-            />
-          </Section>
-
-          <Section title="GOAL" delay={180}>
-            <SegmentedControl<Goal>
-              value={goal}
-              onChange={setGoal}
-              options={[
-                { value: "Fat Loss", label: "Fat Loss" },
-                { value: "Muscle Gain", label: "Muscle" },
-                { value: "Maintain", label: "Maintain" },
-                { value: "Recomp", label: "Recomp" }
               ]}
             />
           </Section>

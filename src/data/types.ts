@@ -1,4 +1,6 @@
-export type Goal = "Fat Loss" | "Muscle Gain" | "Maintain" | "Recomp";
+// This app is fat-loss only. Keep `Goal` as a single-member type so the rest
+// of the codebase still type-checks against client.goal.
+export type Goal = "Fat Loss";
 export type ClientType =
   | "Vegetarian"
   | "Busy Pro"
