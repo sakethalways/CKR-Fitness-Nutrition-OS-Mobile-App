@@ -77,7 +77,7 @@ export type ClientFormData = {
 type Props = {
   initial?: Partial<Client>;
   submitLabel: string;
-  onSubmit: (data: ClientFormData) => void;
+  onSubmit: (data: ClientFormData) => void | Promise<void>;
   headerTitle: string;
   headerSubtitle: string;
 };
@@ -122,8 +122,12 @@ export function ClientForm({
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const isValid = useMemo(() => name.trim().length >= 2, [name]);
+  // Guards against a double-tap creating two clients: the button locks while
+  // onSubmit (which may be async — addClient + notify) is in flight.
+  const [submitting, setSubmitting] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
+    if (submitting) return;
     if (!isValid) {
       setNameError("Enter a name");
       haptics.warning();
@@ -135,22 +139,27 @@ export function ClientForm({
       haptics.warning();
       return;
     }
-    onSubmit({
-      name: name.trim(),
-      age,
-      gender,
-      weight,
-      height,
-      goal,
-      activityLevel: activity,
-      clientTypes,
-      foodPref,
-      allergens: allergens.length === 0 ? ["None"] : allergens,
-      status,
-      phoneCountryCode,
-      phoneNumber: phoneNumber.replace(/\D/g, ""),
-      notes: notes.trim()
-    });
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        name: name.trim(),
+        age,
+        gender,
+        weight,
+        height,
+        goal,
+        activityLevel: activity,
+        clientTypes,
+        foodPref,
+        allergens: allergens.length === 0 ? ["None"] : allergens,
+        status,
+        phoneCountryCode,
+        phoneNumber: phoneNumber.replace(/\D/g, ""),
+        notes: notes.trim()
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -336,6 +345,7 @@ export function ClientForm({
           size="lg"
           fullWidth
           disabled={!isValid}
+          loading={submitting}
           onPress={submit}
         />
       </BottomBar>

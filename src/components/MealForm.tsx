@@ -8,6 +8,7 @@ import { Stepper } from "@/components/Stepper";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { ChipSelector } from "@/components/ChipSelector";
 import { Pressable } from "@/components/Pressable";
+import { isInstagramUrl } from "@/lib/reels";
 import * as haptics from "@/lib/haptics";
 
 export type MealFormData = {
@@ -28,6 +29,8 @@ export type MealFormData = {
   notes: string;
   rating: number;
   mealSection: string;
+  reelUrl: string | null;
+  mealCode: string;
 };
 
 const CALORIE_BRACKETS = {
@@ -88,6 +91,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
     const [proteinAnchor, setProteinAnchor] = useState(initialMeal?.proteinAnchor || "");
     const [notes, setNotes] = useState(initialMeal?.notes || "");
     const [rating, setRating] = useState(initialMeal?.rating || 0);
+    const [reelUrl, setReelUrl] = useState(initialMeal?.reelUrl || "");
 
     // Validation errors (field → has-error flag)
     const [errors, setErrors] = useState<
@@ -140,6 +144,11 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
         newErrors.fatG = true;
         problems.push("Fat cannot be negative");
       }
+      // Reel link is optional, but if filled it must be a real Instagram link.
+      if (reelUrl.trim().length > 0 && !isInstagramUrl(reelUrl)) {
+        newErrors.reelUrl = true;
+        problems.push("Reel link must be a valid instagram.com URL (or left empty)");
+      }
 
       setErrors(newErrors);
       return problems;
@@ -174,7 +183,11 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
         notes: notes.trim(),
         rating: Math.min(10, Math.max(0, Math.round(rating))),
         // Section mirrors the meal type — keeps DB meal_section consistent.
-        mealSection: mealType
+        mealSection: mealType,
+        // Empty link → null (no button shown anywhere).
+        reelUrl: reelUrl.trim() ? reelUrl.trim() : null,
+        // Code is per-dish; derive from the meal number so it stays consistent.
+        mealCode: `M${mealNumber}`
       };
 
       onSubmit(formData);
@@ -373,6 +386,22 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
             METADATA
           </Text>
           <View className="gap-3">
+            <Input
+              label="Instagram Reel Link (optional)"
+              placeholder="https://www.instagram.com/reel/..."
+              value={reelUrl}
+              onChangeText={(v) => {
+                setReelUrl(v);
+                handleFieldChange("reelUrl");
+              }}
+              autoCapitalize="none"
+              keyboardType="url"
+              error={
+                errors.reelUrl
+                  ? "Enter a valid instagram.com link or leave empty"
+                  : undefined
+              }
+            />
             <Textarea
               label="Base Description"
               placeholder="Fixed ingredients and calories..."

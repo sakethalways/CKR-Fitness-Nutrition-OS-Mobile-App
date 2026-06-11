@@ -19,6 +19,7 @@ import { useNotifications } from "@/store/notifications";
 import { getAdminId } from "@/lib/admin";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function NewClient() {
   const user = useAuth((s) => s.user)!;
@@ -88,7 +89,7 @@ export default function NewClient() {
               router.replace(`/(app)/generate?clientId=${created.id}`);
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't save client", e?.message ?? String(e));
+              Alert.alert("Couldn't save client", friendlyError(e));
             }
           }}
         />

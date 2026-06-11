@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { View, ScrollView, StatusBar, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
@@ -11,6 +11,7 @@ import { Avatar } from "@/components/Avatar";
 import { Button } from "@/components/Button";
 import { BottomBar } from "@/components/BottomBar";
 import { RatingPill } from "@/components/RatingPill";
+import { ReelButton } from "@/components/ReelButton";
 import { selectClient, selectPlan, useData } from "@/store/data";
 import { seedMeals } from "@/data/meals";
 import { useAuth } from "@/store/auth";
@@ -18,6 +19,7 @@ import { useNotifications } from "@/store/notifications";
 import { getAdminId } from "@/lib/admin";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function RatePlan() {
   const { planId } = useLocalSearchParams<{ planId: string }>();
@@ -63,6 +65,7 @@ export default function RatePlan() {
     plan?.ratings ?? {}
   );
   const [done, setDone] = useState(false);
+  const savingRef = useRef(false);
 
   if (!plan || !client) {
     return (
@@ -118,6 +121,9 @@ export default function RatePlan() {
       return;
     }
     if (!user || user.role !== "trainer") return;
+    // Guard the in-flight window so a double-tap can't save (and notify) twice.
+    if (savingRef.current) return;
+    savingRef.current = true;
     try {
       await saveRatings(plan.id, ratings, user.trainer.id);
       const avg =
@@ -143,7 +149,9 @@ export default function RatePlan() {
       setTimeout(() => router.back(), 700);
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't save ratings", e?.message ?? String(e));
+      Alert.alert("Couldn't save ratings", friendlyError(e));
+    } finally {
+      savingRef.current = false;
     }
   };
 
@@ -245,6 +253,7 @@ export default function RatePlan() {
                     <View className="flex-1 mr-2">
                       <Text variant="caption" className="text-ink-3">
                         {m.mealType.toUpperCase()}
+                        {m.mealCode ? ` · ${m.mealCode}` : ""}
                       </Text>
                       <Text variant="h3" className="text-ink" numberOfLines={1}>
                         {m.mealName}
@@ -297,6 +306,11 @@ export default function RatePlan() {
                       setRatings((prev) => ({ ...prev, [m.id]: v }))
                     }
                   />
+                  {m.reelUrl ? (
+                    <View className="mt-3">
+                      <ReelButton url={m.reelUrl} />
+                    </View>
+                  ) : null}
                 </MotiView>
               );
             })}

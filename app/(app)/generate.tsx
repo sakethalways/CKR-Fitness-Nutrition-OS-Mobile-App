@@ -27,6 +27,7 @@ import { calculateAuto, macrosFromTarget } from "@/lib/calc";
 import { genderLabel } from "@/lib/format";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function Generate() {
   const { clientId } = useLocalSearchParams<{ clientId: string }>();
@@ -74,6 +75,10 @@ export default function Generate() {
   // When untouched these equal the auto values (identical formulas in calc.ts).
   const macros = macrosFromTarget(target, client.weight, client.goal, protein);
   const isCustom = target !== auto.target || protein !== auto.protein;
+  // BMR/TDEE are physiology — they never change with manual adjustments. The
+  // DEFICIT is target − TDEE, so it must follow the CURRENT target live
+  // (manually setting 1800 with TDEE 2441 is a −641 deficit, not −400).
+  const liveDelta = target - auto.tdee;
 
   const onContinue = async () => {
     try {
@@ -86,7 +91,7 @@ export default function Generate() {
     } catch (e: any) {
       haptics.warning();
       const { Alert } = await import("react-native");
-      Alert.alert("Couldn't save targets", e?.message ?? String(e));
+      Alert.alert("Couldn't save targets", friendlyError(e));
     }
   };
 
@@ -226,13 +231,13 @@ export default function Generate() {
               <Divider />
               <CalcRow
                 icon={
-                  auto.delta < 0 ? (
+                  liveDelta < 0 ? (
                     <TrendingDown
                       size={14}
                       color={colors.warn}
                       strokeWidth={2.4}
                     />
-                  ) : auto.delta > 0 ? (
+                  ) : liveDelta > 0 ? (
                     <TrendingUp
                       size={14}
                       color={colors.success}
@@ -243,15 +248,19 @@ export default function Generate() {
                   )
                 }
                 label={
-                  auto.delta < 0
+                  liveDelta < 0
                     ? "Deficit"
-                    : auto.delta > 0
+                    : liveDelta > 0
                     ? "Surplus"
                     : "Maintain"
                 }
-                value={auto.delta}
+                value={liveDelta}
                 signed
-                hint={`Goal: ${client.goal}`}
+                hint={
+                  isCustom
+                    ? "From your adjusted target vs TDEE"
+                    : `Goal: ${client.goal}`
+                }
               />
               <Divider />
               <CalcRow

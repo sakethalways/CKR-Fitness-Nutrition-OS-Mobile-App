@@ -55,9 +55,13 @@ export const useNotifications = create<NotificationsState>((set, get) => ({
 
   init: async (recipientRole, recipientId) => {
     try {
+      // Scope the fetch to this recipient explicitly (matches the realtime
+      // filter below). RLS already enforces this, but filtering at the query
+      // keeps the payload small and is a second layer of defence.
       const { data, error } = await supabase
         .from("notifications")
         .select("*")
+        .eq("recipient_id", recipientId)
         .order("created_at", { ascending: false });
       if (error) throw error;
       set({ items: (data ?? []).map(notifFromRow), hasHydrated: true });

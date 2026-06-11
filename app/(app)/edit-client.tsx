@@ -11,6 +11,7 @@ import { Button } from "@/components/Button";
 import { selectClient, useData } from "@/store/data";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function EditClient() {
   const { clientId } = useLocalSearchParams<{ clientId: string }>();
@@ -72,7 +73,7 @@ export default function EditClient() {
               ]);
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't save", e?.message ?? String(e));
+              Alert.alert("Couldn't save", friendlyError(e));
             }
           }}
         />

@@ -15,11 +15,14 @@ export const buildWhatsAppText = (
   for (const s of sections) {
     lines.push(`*${s.slot.toUpperCase()}* — pick one`);
     for (const m of s.meals) {
+      const code = m.mealCode ? `${m.mealCode} ` : "";
       lines.push(
-        `• *${m.mealName}* — ${m.calories} kcal · P${Math.round(m.proteinG)} C${Math.round(m.carbsG)} F${Math.round(m.fatG)}`
+        `• *${code}${m.mealName}* — ${m.calories} kcal · P${Math.round(m.proteinG)} C${Math.round(m.carbsG)} F${Math.round(m.fatG)}`
       );
       // The ingredient quantities are the most useful part for the client.
       if (m.quantities) lines.push(`   ${m.quantities}`);
+      // Recipe reel — WhatsApp auto-links the raw URL. Only when present.
+      if (m.reelUrl) lines.push(`   ▶ Recipe reel: ${m.reelUrl}`);
     }
     lines.push("");
   }
@@ -45,7 +48,7 @@ export const buildPlanHTML = (
           (m) => `
         <div class="meal">
           <div class="meal-head">
-            <div class="meal-name">${escapeHtml(m.mealName)}</div>
+            <div class="meal-name">${m.mealCode ? `<span class="meal-code">${escapeHtml(m.mealCode)}</span> ` : ""}${escapeHtml(m.mealName)}</div>
             <div class="meal-kcal">${m.calories} <span class="unit">kcal</span></div>
           </div>
           <div class="meal-meta">
@@ -56,6 +59,11 @@ export const buildPlanHTML = (
           ${
             m.quantities
               ? `<div class="meal-qty">${escapeHtml(m.quantities)}</div>`
+              : ""
+          }
+          ${
+            m.reelUrl
+              ? `<a class="reel-link" href="${escapeHtml(m.reelUrl)}">▶ Watch recipe reel</a>`
               : ""
           }
         </div>
@@ -117,6 +125,8 @@ export const buildPlanHTML = (
   .meal-kcal .unit { font-size: 9px; color: #64748B; margin-left: 1px; font-weight: 500; }
   .meal-meta { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
   .meal-qty { margin-top: 6px; font-size: 11px; color: #B6C2D1; line-height: 1.45; border-top: 0.5px dashed rgba(255,255,255,0.10); padding-top: 6px; }
+  .meal-code { font-size: 10px; font-weight: 700; color: #C6F432; letter-spacing: 0.3px; }
+  .reel-link { display: inline-block; margin-top: 7px; font-size: 10px; font-weight: 700; color: #E1306C; text-decoration: none; letter-spacing: 0.2px; }
   .macro { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
   .macro.p { color: #60A5FA; background: rgba(96,165,250,0.12); }
   .macro.c { color: #C6F432; background: rgba(198,244,50,0.12); }

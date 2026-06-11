@@ -95,5 +95,12 @@ export const seedMeals: Meal[] = legacySeed.map((m): Meal => {
     allergens: string | null;
   };
   void isShootPriority;
-  return { ...(rest as Omit<Meal, "allergens">), allergens: parseAllergenText(allergens) };
+  const base = rest as Omit<Meal, "allergens" | "reelUrl" | "mealCode">;
+  return {
+    ...base,
+    allergens: parseAllergenText(allergens),
+    // No reel links in the seed fallback yet; codes are per-dish (meal_number).
+    reelUrl: null,
+    mealCode: `M${base.mealNumber}`,
+  };
 });

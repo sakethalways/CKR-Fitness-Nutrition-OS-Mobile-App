@@ -8,7 +8,12 @@ import { mealConflictsWithClient } from "@/lib/allergens";
 // brackets (main meals cap at 550 kcal, snacks at 300). The old Lunch 0.35
 // pushed its target past 550 for typical clients, so the daily total drifted
 // under target. These keep Lunch/Dinner ~reachable.
-const CAL_SHARE: Record<"Breakfast" | "Lunch" | "Dinner" | "Snack", number> = {
+// Exported so display surfaces (e.g. plan-detail slot headers) show the SAME
+// per-slot targets the generator actually aimed for.
+export const CAL_SHARE: Record<
+  "Breakfast" | "Lunch" | "Dinner" | "Snack",
+  number
+> = {
   Breakfast: 0.28,
   Lunch: 0.3,
   Dinner: 0.3,
@@ -153,19 +158,38 @@ export const generateForClient = (
   const slots: GeneratedSlot[] = [];
   const missingSlots: string[] = [];
 
+  // Carry-over allocation: each slot starts from its share of the target, PLUS
+  // whatever the previous slots couldn't place. If Lunch's share is 612 kcal
+  // but its biggest option is 547, the 65 kcal shortfall rolls into Dinner's
+  // budget so a bigger dinner is preferred — and vice versa when a slot
+  // overshoots. This makes the day's total land as close to the client's
+  // target as the catalogue allows, instead of every slot silently keeping its
+  // fixed share.
+  let carry = 0;
+
   const addSlot = (
     label: "Breakfast" | "Lunch" | "Dinner" | "Snack",
     type: Meal["mealType"]
   ) => {
-    const slotCal = Math.round(target * CAL_SHARE[label]);
+    const baseCal = target * CAL_SHARE[label];
+    const slotCal = Math.max(0, Math.round(baseCal + carry));
     const slotProt = Math.round(proteinTarget * CAL_SHARE[label]);
     const meals = pickSlot(pool, type, slotCal, slotProt, tagSet, used, recent);
     if (meals.length > 0) {
+      // Expected contribution = average of the slot's options (client picks one).
+      const avgCal =
+        meals.reduce((sum, m) => sum + m.calories, 0) / meals.length;
+      carry = slotCal - avgCal;
       slots.push({ slot: label, targetKcal: slotCal, meals });
-    } else if (catalogue.some((m) => m.mealType === type)) {
-      // The catalogue has meals of this type, but none passed the client's
-      // diet/allergen filter → flag it so the UI can explain the gap.
-      if (!missingSlots.includes(label)) missingSlots.push(label);
+    } else {
+      // Slot has no meals — its whole budget rolls forward so the remaining
+      // slots can absorb what the catalogue allows.
+      carry = slotCal;
+      if (catalogue.some((m) => m.mealType === type)) {
+        // The catalogue has meals of this type, but none passed the client's
+        // diet/allergen filter → flag it so the UI can explain the gap.
+        if (!missingSlots.includes(label)) missingSlots.push(label);
+      }
     }
   };
 

@@ -11,6 +11,7 @@ import { Button } from "@/components/Button";
 import { Logo } from "@/components/Logo";
 import { SegmentedControl } from "@/components/SegmentedControl";
 import { useAuth } from "@/store/auth";
+import { friendlyError } from "@/lib/errors";
 import * as haptics from "@/lib/haptics";
 import { colors } from "@/theme/tokens";
 
@@ -50,7 +51,7 @@ export default function LoginScreen() {
         router.replace("/overview");
       }
     } catch (e: any) {
-      setError(e.message ?? "Something went wrong");
+      setError(friendlyError(e, "Couldn't sign in. Please try again."));
       haptics.warning();
     } finally {
       setLoading(false);

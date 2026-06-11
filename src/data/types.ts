@@ -126,6 +126,10 @@ export type Meal = {
   baseDescription: string | null;
   proteinAnchor: string | null;
   mealSection: string | null;
+  // Per-dish (meal_number) Instagram recipe reel link. null = no link → no button.
+  reelUrl: string | null;
+  // Per-dish display code, e.g. "M1". Shown in UI / PDF / WhatsApp.
+  mealCode: string | null;
 };
 
 export type Plan = {

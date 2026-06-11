@@ -23,6 +23,7 @@ import { PlanLoadingScreen } from "@/components/PlanLoadingScreen";
 import { useData } from "@/store/data";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function MealFormScreen() {
   const insets = useSafeAreaInsets();
@@ -101,7 +102,7 @@ export default function MealFormScreen() {
       haptics.warning();
       Alert.alert(
         "Error",
-        `Failed to save meal: ${e instanceof Error ? e.message : String(e)}`
+        friendlyError(e, "Couldn't save the meal. Please try again.")
       );
     } finally {
       setLoading(false);
@@ -130,7 +131,7 @@ export default function MealFormScreen() {
       haptics.warning();
       Alert.alert(
         "Error",
-        `Failed to delete meal: ${e instanceof Error ? e.message : String(e)}`
+        friendlyError(e, "Couldn't delete the meal. Please try again.")
       );
     } finally {
       setLoading(false);

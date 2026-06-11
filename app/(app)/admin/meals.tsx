@@ -10,7 +10,7 @@ import {
   Pressable as RNPressable
 } from "react-native";
 import { router } from "expo-router";
-import { ArrowLeft, Plus, Edit2, Trash2 } from "lucide-react-native";
+import { ArrowLeft, Plus, Edit2, Trash2, Instagram } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import { Text } from "@/components/Text";
@@ -22,6 +22,7 @@ import { useData } from "@/store/data";
 import { colors } from "@/theme/tokens";
 import { Meal, MealType } from "@/data/types";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 const TAB_OPTIONS: { value: MealType; label: string }[] = [
   { value: "Breakfast", label: "Breakfast" },
@@ -53,9 +54,14 @@ const MealGroupRow = React.memo(function MealGroupRow({
       {/* Meal header */}
       <View className="flex-row items-center justify-between px-4 py-2 rounded-lg bg-surface border border-line">
         <View className="flex-1">
-          <Text variant="caption" className="text-ink-3 mb-0.5">
-            MEAL {group.mealNumber}
-          </Text>
+          <View className="flex-row items-center gap-2 mb-0.5">
+            <Text variant="caption" className="text-ink-3">
+              {group.brackets[0]?.mealCode || `M${group.mealNumber}`} · MEAL {group.mealNumber}
+            </Text>
+            {group.brackets[0]?.reelUrl ? (
+              <Instagram size={12} color="#E1306C" strokeWidth={2.4} />
+            ) : null}
+          </View>
           <Text variant="h3" className="text-ink" numberOfLines={1}>
             {group.mealName}
           </Text>
@@ -224,7 +230,7 @@ export default function AdminMeals() {
       haptics.success();
     } catch (e) {
       haptics.warning();
-      Alert.alert("Error", `Failed to delete meal: ${String(e)}`);
+      Alert.alert("Couldn't delete meal", friendlyError(e));
     } finally {
       setDeletingId(null);
       setMealToDelete(null);

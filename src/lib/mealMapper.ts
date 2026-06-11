@@ -25,6 +25,8 @@ export function mealFromRow(row: any): Meal {
     baseDescription: row.base_description || null,
     proteinAnchor: row.protein_anchor || null,
     mealSection: row.meal_section || null,
+    reelUrl: row.reel_url || null,
+    mealCode: row.meal_code || null,
   };
 }
 
@@ -50,6 +52,8 @@ export function mealToDb(meal: Partial<Meal>): any {
   if (meal.baseDescription !== undefined) db.base_description = meal.baseDescription;
   if (meal.proteinAnchor !== undefined) db.protein_anchor = meal.proteinAnchor;
   if (meal.mealSection !== undefined) db.meal_section = meal.mealSection;
+  if (meal.reelUrl !== undefined) db.reel_url = meal.reelUrl;
+  if (meal.mealCode !== undefined) db.meal_code = meal.mealCode;
 
   return db;
 }

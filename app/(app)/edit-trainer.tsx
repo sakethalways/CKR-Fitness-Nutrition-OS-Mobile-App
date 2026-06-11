@@ -20,11 +20,13 @@ import { useData } from "@/store/data";
 import { deleteTrainerFn, updateTrainerPasswordFn } from "@/lib/edgeFunctions";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function EditTrainer() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const allTrainers = useData((s) => s.trainers);
   const updateTrainer = useData((s) => s.updateTrainer);
+  const removeTrainerLocal = useData((s) => s.removeTrainerLocal);
   // Reactive lookup so updates flow into the form when needed
   const trainer = useData((s) =>
     id ? s.trainers.find((t) => t.id === id) : undefined
@@ -62,7 +64,7 @@ export default function EditTrainer() {
               haptics.success();
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't update", e?.message ?? String(e));
+              Alert.alert("Couldn't update", friendlyError(e));
             }
           }
         }
@@ -85,11 +87,12 @@ export default function EditTrainer() {
             setBusy(true);
             try {
               await deleteTrainerFn(trainer.id);
+              removeTrainerLocal(trainer.id);
               haptics.success();
               router.back();
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't delete", e?.message ?? String(e));
+              Alert.alert("Couldn't delete", friendlyError(e));
             } finally {
               setBusy(false);
             }
@@ -160,7 +163,7 @@ export default function EditTrainer() {
               ]);
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't save", e?.message ?? String(e));
+              Alert.alert("Couldn't save", friendlyError(e));
             } finally {
               setBusy(false);
             }

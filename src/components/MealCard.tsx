@@ -3,6 +3,7 @@ import { View } from "react-native";
 import { MotiView } from "moti";
 import { Star, Leaf, Drumstick } from "lucide-react-native";
 import { Text } from "./Text";
+import { ReelButton } from "./ReelButton";
 import { Meal } from "@/data/types";
 import { colors } from "@/theme/tokens";
 
@@ -30,6 +31,15 @@ export function MealCard({ meal, delay = 0 }: Props) {
             <Text variant="caption" className="text-ink-3 ml-1.5 uppercase tracking-wider">
               {meal.diet}
             </Text>
+            {meal.mealCode ? (
+              <Text
+                variant="caption"
+                className="text-ink-3 ml-2 uppercase tracking-wider"
+                style={{ fontFamily: "Inter_600SemiBold" }}
+              >
+                · {meal.mealCode}
+              </Text>
+            ) : null}
           </View>
           <Text variant="h3" className="text-ink" numberOfLines={2}>
             {meal.mealName}
@@ -88,6 +98,13 @@ export function MealCard({ meal, delay = 0 }: Props) {
           <Text variant="caption" className="text-ink-2" style={{ lineHeight: 18 }}>
             {meal.quantities}
           </Text>
+        </View>
+      ) : null}
+
+      {/* Instagram recipe reel — only shown when the dish has a link. */}
+      {meal.reelUrl ? (
+        <View className="mt-3">
+          <ReelButton url={meal.reelUrl} />
         </View>
       ) : null}
     </MotiView>

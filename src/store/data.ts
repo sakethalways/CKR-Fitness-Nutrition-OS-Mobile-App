@@ -194,6 +194,10 @@ type DataState = {
   fetchMeals: () => Promise<void>;
 
   updateTrainer: (id: string, patch: Partial<Trainer>) => Promise<void>;
+  /** Remove a deleted trainer (and unassign their clients) from local state
+   *  immediately — the row is deleted via an edge function, so there's no
+   *  store mutation that would otherwise reflect it before realtime catches up. */
+  removeTrainerLocal: (id: string) => void;
 };
 
 const subscriptions: { unsubscribe: () => void }[] = [];
@@ -573,7 +577,14 @@ export const useData = create<DataState>((set, get) => ({
       set((s) => ({
         trainers: upsertById(s.trainers, trainerFromRow(data))
       }));
-  }
+  },
+
+  removeTrainerLocal: (id) =>
+    // The trainer row is deleted via an edge function (the DB sets affected
+    // clients' trainer_id to NULL on its side). Drop the trainer from local
+    // state right away so it can't be picked for new clients before realtime
+    // catches up; client reassignment is reflected on the next fetch/search.
+    set((s) => ({ trainers: s.trainers.filter((t) => t.id !== id) }))
 }));
 
 // ===========================================================================

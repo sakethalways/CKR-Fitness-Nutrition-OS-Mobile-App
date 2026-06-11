@@ -18,6 +18,7 @@ import { seedMeals } from "@/data/meals";
 import { buildPlanHTML, buildWhatsAppText } from "@/lib/exports";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function Approve() {
   const { planId } = useLocalSearchParams<{ planId: string }>();
@@ -88,7 +89,7 @@ export default function Approve() {
       }
     } catch (e) {
       haptics.warning();
-      Alert.alert("Couldn't generate PDF", String(e));
+      Alert.alert("Couldn't generate PDF", friendlyError(e));
     } finally {
       setPdfBusy(false);
     }

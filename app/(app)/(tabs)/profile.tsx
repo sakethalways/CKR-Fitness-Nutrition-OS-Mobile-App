@@ -23,6 +23,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
 import * as ImagePicker from "expo-image-picker";
+import { friendlyError } from "@/lib/errors";
 import { uploadAvatar, deleteAvatar } from "@/lib/storage";
 import { Text } from "@/components/Text";
 import { Avatar } from "@/components/Avatar";
@@ -75,7 +76,7 @@ export default function Profile() {
         haptics.success();
       }
     } catch (e) {
-      Alert.alert("Couldn't upload image", String(e));
+      Alert.alert("Couldn't upload image", friendlyError(e));
     }
   };
 
@@ -101,7 +102,7 @@ export default function Profile() {
         haptics.success();
       }
     } catch (e) {
-      Alert.alert("Couldn't upload photo", String(e));
+      Alert.alert("Couldn't upload photo", friendlyError(e));
     }
   };
 
@@ -113,7 +114,7 @@ export default function Profile() {
       await updateTrainer(trainer.id, { avatarUri: undefined });
       haptics.success();
     } catch (e) {
-      Alert.alert("Couldn't remove picture", String(e));
+      Alert.alert("Couldn't remove picture", friendlyError(e));
     }
   };
 

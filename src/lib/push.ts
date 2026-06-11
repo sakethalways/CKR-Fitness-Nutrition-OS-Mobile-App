@@ -113,26 +113,37 @@ export const registerPushTokenForUser = async (
   }
 
   const platform = Platform.OS === "ios" ? "ios" : "android";
-  const now = new Date().toISOString();
 
-  const { error } = await supabase.from("device_push_tokens").upsert(
-    {
-      user_id: userId,
-      token: r.expoPushToken,
-      platform,
-      last_seen_at: now,
-      updated_at: now
-    },
-    { onConflict: "token" }
-  );
+  // claim_push_token (migration 024) reassigns the token row to the CURRENT
+  // user even when a previous account on this phone still owns it — a plain
+  // upsert can't do that (RLS blocks updating another user's row), which left
+  // devices receiving the previous user's pushes after an account switch.
+  const { error } = await supabase.rpc("claim_push_token", {
+    p_token: r.expoPushToken,
+    p_platform: platform
+  });
 
   if (error) {
-    // eslint-disable-next-line no-console
-    console.warn("[push] token upsert failed:", error.message);
+    // Fallback for projects where migration 024 isn't applied yet.
+    const now = new Date().toISOString();
+    const { error: upsertErr } = await supabase.from("device_push_tokens").upsert(
+      {
+        user_id: userId,
+        token: r.expoPushToken,
+        platform,
+        last_seen_at: now,
+        updated_at: now
+      },
+      { onConflict: "token" }
+    );
+    if (upsertErr) {
+      // eslint-disable-next-line no-console
+      console.warn("[push] token claim failed:", upsertErr.message);
+    }
   } else {
     // eslint-disable-next-line no-console
     console.log(
-      "[push] token registered:",
+      "[push] token claimed:",
       r.expoPushToken.slice(0, 30) + "…"
     );
   }
@@ -149,7 +160,13 @@ export const unregisterPushTokenAsync = async (): Promise<void> => {
   const t = cachedToken;
   cachedToken = null;
   try {
-    await supabase.from("device_push_tokens").delete().eq("token", t);
+    // release_push_token (migration 024) deletes the row even if a previous
+    // account on this phone still owns it; fall back to the plain delete when
+    // the migration isn't applied yet.
+    const { error } = await supabase.rpc("release_push_token", { p_token: t });
+    if (error) {
+      await supabase.from("device_push_tokens").delete().eq("token", t);
+    }
   } catch {
     /* silent */
   }

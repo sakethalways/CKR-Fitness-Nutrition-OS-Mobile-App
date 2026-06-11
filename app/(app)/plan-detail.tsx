@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { View, ScrollView, StatusBar, Alert } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { MotiView } from "moti";
@@ -6,7 +6,8 @@ import {
   ArrowLeft,
   RefreshCw,
   Check,
-  BookmarkPlus
+  BookmarkPlus,
+  AlertTriangle
 } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -21,6 +22,9 @@ import { CalorieRangeBar } from "@/components/CalorieRangeBar";
 import { SlotHeader } from "@/components/SlotHeader";
 import { MealCard } from "@/components/MealCard";
 import { PlanLoadingScreen } from "@/components/PlanLoadingScreen";
+import { friendlyError } from "@/lib/errors";
+import { groupMealsIntoSlots, computeRangeFromSlots } from "@/lib/planMath";
+import { CAL_SHARE } from "@/lib/mealGenerator";
 import {
   selectClient,
   selectPlan,
@@ -93,20 +97,12 @@ export default function PlanDetail() {
     [draftIds, dbMeals]
   );
 
-  const slots = useMemo(
-    () => {
-      const breakfast = meals.filter((m) => m.mealType === "Breakfast");
-      const lunchDinner = meals.filter((m) => m.mealType === "Lunch / Dinner");
-      const snack = meals.filter((m) => m.mealType === "Snack");
-      return [
-        { slot: "Breakfast", meals: breakfast },
-        { slot: "Lunch", meals: lunchDinner.slice(0, Math.ceil(lunchDinner.length / 2)) },
-        { slot: "Dinner", meals: lunchDinner.slice(Math.ceil(lunchDinner.length / 2)) },
-        { slot: "Snack", meals: snack },
-      ].filter((s) => s.meals.length > 0);
-    },
-    [meals]
-  );
+  const slots = useMemo(() => groupMealsIntoSlots(meals), [meals]);
+
+  // The plan's current range, derived from the meals it actually contains.
+  // Equals the stored range for a fresh plan; differs only after a swap or
+  // after a meal was removed from the catalogue.
+  const liveRange = useMemo(() => computeRangeFromSlots(slots), [slots]);
 
   const dirty = useMemo(() => {
     const a = (plan?.selectedMealIds ?? []).map(String).sort().join("|");
@@ -137,6 +133,37 @@ export default function PlanDetail() {
       return true;
     });
   }, [swapForSlot, draftIds, swapTargetId, client, dbMeals]);
+
+  // Self-heal: if the plan's STORED range no longer matches the meals it holds
+  // (because a meal was removed from the catalogue), quietly persist the
+  // corrected range once so plan lists and exports stay accurate too. Skipped
+  // for fresh plans (no drift) and while the user has unsaved swaps in progress.
+  const healedRef = useRef<string | null>(null);
+  const savingTemplateRef = useRef(false);
+  useEffect(() => {
+    if (!plan || meals.length === 0 || dirty) return;
+    if (healedRef.current === plan.id) return;
+    const drifted =
+      plan.calorieRangeLow !== liveRange.rangeLow ||
+      plan.calorieRangeHigh !== liveRange.rangeHigh;
+    if (!drifted) return;
+    healedRef.current = plan.id;
+    updatePlan(plan.id, {
+      calorieRangeLow: liveRange.rangeLow,
+      calorieRangeHigh: liveRange.rangeHigh
+    }).catch(() => {
+      // Non-fatal (e.g. a viewer without write permission); allow a retry
+      // the next time the plan is opened.
+      healedRef.current = null;
+    });
+  }, [
+    plan,
+    meals.length,
+    dirty,
+    liveRange.rangeLow,
+    liveRange.rangeHigh,
+    updatePlan
+  ]);
 
   // --- All hooks above this line always run (no conditional hooks) ---
 
@@ -202,7 +229,13 @@ export default function PlanDetail() {
 
   const onSaveChanges = async () => {
     try {
-      await updatePlan(plan.id, { selectedMealIds: draftIds });
+      // Recompute and persist the range so the saved plan always matches the
+      // meals it now contains.
+      await updatePlan(plan.id, {
+        selectedMealIds: draftIds,
+        calorieRangeLow: liveRange.rangeLow,
+        calorieRangeHigh: liveRange.rangeHigh
+      });
 
       if (isAdmin) {
         // Admin edit: close any pending change request + notify the trainer.
@@ -249,13 +282,16 @@ export default function PlanDetail() {
       }
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't save changes", e?.message ?? String(e));
+      Alert.alert("Couldn't save changes", friendlyError(e));
     }
   };
 
   const onSaveToLibrary = async () => {
     if (!plan.selectedMealIds || plan.selectedMealIds.length === 0) return;
     if (!isAdmin) return;
+    // Guard the in-flight window so a double-tap can't create two templates.
+    if (savingTemplateRef.current) return;
+    savingTemplateRef.current = true;
     try {
       await saveTemplate({
         name: `${client.goal} · ${plan.calorieRangeLow}–${plan.calorieRangeHigh} kcal`,
@@ -271,7 +307,9 @@ export default function PlanDetail() {
       Alert.alert("Saved", "Plan added to the library template.");
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't save", e?.message ?? String(e));
+      Alert.alert("Couldn't save", friendlyError(e));
+    } finally {
+      savingTemplateRef.current = false;
     }
   };
 
@@ -388,12 +426,28 @@ export default function PlanDetail() {
             );
           })()}
 
-          {/* Calorie range */}
+          {/* Calorie range — derived from the meals currently in the plan, so
+              it stays correct after swaps or a catalogue change. */}
           <CalorieRangeBar
-            target={client.calorieTarget ?? plan.calorieRangeLow}
-            low={plan.calorieRangeLow}
-            high={plan.calorieRangeHigh}
+            target={client.calorieTarget ?? liveRange.rangeLow}
+            low={liveRange.rangeLow}
+            high={liveRange.rangeHigh}
           />
+
+          {/* Some referenced meals no longer exist (e.g. removed from the
+              catalogue). Surface it instead of silently showing a short plan. */}
+          {draftIds.length > meals.length ? (
+            <View className="mt-4 rounded-2xl border border-warn/30 bg-warn/[0.06] p-3.5 flex-row items-start">
+              <AlertTriangle size={15} color={colors.warn} strokeWidth={2.4} />
+              <Text variant="caption" className="text-ink-2 ml-2.5 flex-1">
+                {draftIds.length - meals.length} meal
+                {draftIds.length - meals.length > 1 ? "s" : ""} in this plan{" "}
+                {draftIds.length - meals.length > 1 ? "are" : "is"} no longer
+                available and {draftIds.length - meals.length > 1 ? "have" : "has"}{" "}
+                been left out. Swap in a replacement before approving or sharing.
+              </Text>
+            </View>
+          ) : null}
 
           {/* Slots */}
           {slots.map((s, slotIdx) => (
@@ -401,14 +455,8 @@ export default function PlanDetail() {
               <SlotHeader
                 slot={s.slot}
                 targetKcal={Math.round(
-                  ((client.calorieTarget ?? plan.calorieRangeLow) *
-                    (s.slot === "Breakfast"
-                      ? 0.25
-                      : s.slot === "Lunch"
-                      ? 0.35
-                      : s.slot === "Dinner"
-                      ? 0.3
-                      : 0.1))
+                  (client.calorieTarget ?? plan.calorieRangeLow) *
+                    (CAL_SHARE[s.slot as keyof typeof CAL_SHARE] ?? 0.25)
                 )}
                 count={s.meals.length}
               />

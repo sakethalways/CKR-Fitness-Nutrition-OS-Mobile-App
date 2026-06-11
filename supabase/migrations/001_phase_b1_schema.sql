@@ -418,7 +418,7 @@ on conflict (id) do nothing;
 -- BEFORE this works, create the auth user once via Supabase Dashboard:
 --   Authentication → Users → Add user → Create new user
 --     Email:    chandrakiranreddygaddam@gmail.com
---     Password: adm7780
+--     Password: <choose a strong password in the dashboard — never write it here>
 --     (tick "Auto Confirm User" so the email is treated as verified)
 --
 -- Then run this whole migration (re-running is fine — it's idempotent).

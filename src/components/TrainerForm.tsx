@@ -26,7 +26,7 @@ type Props = {
   /** in edit mode, password is optional (only set to change it) */
   mode: "create" | "edit";
   submitLabel: string;
-  onSubmit: (data: TrainerFormData) => void;
+  onSubmit: (data: TrainerFormData) => void | Promise<void>;
   takenMobiles?: string[]; // for uniqueness check
   headerTitle: string;
   headerSubtitle: string;
@@ -60,7 +60,12 @@ export function TrainerForm({
     return true;
   }, [name, mobile, password, mode]);
 
-  const submit = () => {
+  // Locks the button while onSubmit is in flight so a double-tap can't create
+  // two trainers (or fire the edge function twice).
+  const [submitting, setSubmitting] = useState(false);
+
+  const submit = async () => {
+    if (submitting) return;
     const e: typeof errors = {};
     if (name.trim().length < 2) e.name = "Enter a name";
     if (mobile.length !== 10) e.mobile = "Mobile must be 10 digits";
@@ -73,13 +78,18 @@ export function TrainerForm({
       haptics.warning();
       return;
     }
-    onSubmit({
-      name: name.trim(),
-      mobile,
-      age,
-      gender,
-      password: password.trim()
-    });
+    setSubmitting(true);
+    try {
+      await onSubmit({
+        name: name.trim(),
+        mobile,
+        age,
+        gender,
+        password: password.trim()
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -204,6 +214,7 @@ export function TrainerForm({
           size="lg"
           fullWidth
           disabled={!isValid}
+          loading={submitting}
           onPress={submit}
         />
       </BottomBar>

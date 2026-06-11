@@ -28,6 +28,7 @@ import {
 } from "lucide-react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import { friendlyError } from "@/lib/errors";
 import { Text } from "@/components/Text";
 import { Avatar } from "@/components/Avatar";
 import { Pressable } from "@/components/Pressable";
@@ -172,7 +173,7 @@ export default function ClientProfile() {
       }
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't update status", e?.message ?? String(e));
+      Alert.alert("Couldn't update status", friendlyError(e));
     }
   };
 
@@ -192,7 +193,7 @@ export default function ClientProfile() {
       setTargetsOpen(false);
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't save targets", e?.message ?? String(e));
+      Alert.alert("Couldn't save targets", friendlyError(e));
     }
   };
 
@@ -229,7 +230,7 @@ export default function ClientProfile() {
               router.back();
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't close client", e?.message ?? String(e));
+              Alert.alert("Couldn't close client", friendlyError(e));
             }
           }
         }
@@ -280,7 +281,7 @@ export default function ClientProfile() {
               );
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't send request", e?.message ?? String(e));
+              Alert.alert("Couldn't send request", friendlyError(e));
             }
           }
         }
@@ -315,7 +316,7 @@ export default function ClientProfile() {
       );
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't send request", e?.message ?? String(e));
+      Alert.alert("Couldn't send request", friendlyError(e));
     }
   };
 
@@ -353,7 +354,7 @@ export default function ClientProfile() {
               );
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't delete", e?.message ?? String(e));
+              Alert.alert("Couldn't delete", friendlyError(e));
             }
           }
         }
@@ -386,7 +387,7 @@ export default function ClientProfile() {
       Alert.alert("Saved to library", "Template available in the Library tab.");
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't save", e?.message ?? String(e));
+      Alert.alert("Couldn't save", friendlyError(e));
     }
   };
 
@@ -425,7 +426,7 @@ export default function ClientProfile() {
       }
     } catch (e) {
       haptics.warning();
-      Alert.alert("Couldn't generate PDF", String(e));
+      Alert.alert("Couldn't generate PDF", friendlyError(e));
     }
   };
 
@@ -446,7 +447,7 @@ export default function ClientProfile() {
               Alert.alert("Deleted", "Plan has been removed.");
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't delete", e?.message ?? String(e));
+              Alert.alert("Couldn't delete", friendlyError(e));
             }
           }
         }

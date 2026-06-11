@@ -36,7 +36,10 @@ export type CalcResult = {
   rangeHigh: number;
 };
 
-// Mifflin-St Jeor BMR
+// Mifflin-St Jeor BMR. The sex constant is +5 (M) / -161 (F); for "Other" we
+// use the midpoint (-78) rather than silently applying the female formula.
+const GENDER_CONSTANT: Record<Gender, number> = { M: 5, F: -161, Other: -78 };
+
 export const mifflinStJeor = ({
   weight,
   height,
@@ -44,7 +47,7 @@ export const mifflinStJeor = ({
   gender
 }: Pick<CalcInput, "weight" | "height" | "age" | "gender">): number => {
   const base = 10 * weight + 6.25 * height - 5 * age;
-  return Math.round(gender === "M" ? base + 5 : base - 161);
+  return Math.round(base + (GENDER_CONSTANT[gender] ?? -78));
 };
 
 export const calculateAuto = (i: CalcInput): CalcResult => {

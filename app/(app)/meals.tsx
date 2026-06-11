@@ -22,6 +22,7 @@ import { Meal } from "@/data/types";
 import { genderLabel } from "@/lib/format";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 // Recompute the plan's totals after a swap.
 const recomputeTotals = (slots: GenerationResult["slots"]) => {
@@ -164,7 +165,7 @@ export default function MealsScreen() {
       haptics.warning();
       setApproving(false);
       const { Alert } = await import("react-native");
-      Alert.alert("Couldn't save plan", e?.message ?? String(e));
+      Alert.alert("Couldn't save plan", friendlyError(e));
     }
   };
 

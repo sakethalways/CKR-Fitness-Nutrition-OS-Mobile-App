@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { Admin, Role, Trainer } from "@/data/types";
 import { supabase, trainerEmail, ADMIN_EMAIL, roleFromSession } from "@/lib/supabase";
 import { registerPushTokenForUser, unregisterPushTokenAsync } from "@/lib/push";
+import { AppError, friendlyError } from "@/lib/errors";
 
 export type AuthUser =
   | { role: "trainer"; trainer: Trainer }
@@ -218,13 +219,17 @@ export const useAuth = create<AuthState>((set, get) => ({
 
   signInTrainer: async (mobile, password) => {
     const m = mobile.replace(/\D/g, "");
-    if (m.length !== 10) throw new Error("Enter a valid 10-digit mobile number");
+    if (m.length !== 10)
+      throw new AppError("Enter a valid 10-digit mobile number");
+    // Trim so an accidental leading/trailing space (common after mobile
+    // autocomplete/paste) doesn't fail login with a misleading error.
+    const pw = password.trim();
     // eslint-disable-next-line no-console
     console.log("[auth] signInTrainer start");
     const { data, error } = await withTimeout(
       supabase.auth.signInWithPassword({
         email: trainerEmail(m),
-        password
+        password: pw
       }),
       12000,
       "Couldn't reach Supabase — check your phone's internet."
@@ -235,15 +240,14 @@ export const useAuth = create<AuthState>((set, get) => ({
       hasSession: !!data?.session
     });
     if (error) {
-      throw new Error(
-        error.message.toLowerCase().includes("invalid")
-          ? "Incorrect mobile or password"
-          : error.message
-      );
+      throw error.message.toLowerCase().includes("invalid")
+        ? new AppError("Incorrect mobile or password")
+        : new AppError(friendlyError(error, "Sign-in failed. Please try again."));
     }
-    if (!data.session) throw new Error("Sign-in failed");
+    if (!data.session) throw new AppError("Sign-in failed. Please try again.");
     const u = userFromSession(data.session, m);
-    if (!u || u.role !== "trainer") throw new Error("This account is not a trainer");
+    if (!u || u.role !== "trainer")
+      throw new AppError("This account isn't registered as a trainer.");
     // eslint-disable-next-line no-console
     console.log("[auth] signInTrainer built user from JWT — setting");
     set({ user: u });
@@ -258,7 +262,7 @@ export const useAuth = create<AuthState>((set, get) => ({
     const { data, error } = await withTimeout(
       supabase.auth.signInWithPassword({
         email: ADMIN_EMAIL,
-        password
+        password: password.trim()
       }),
       12000,
       "Couldn't reach Supabase — check your phone's internet."
@@ -269,15 +273,14 @@ export const useAuth = create<AuthState>((set, get) => ({
       hasSession: !!data?.session
     });
     if (error) {
-      throw new Error(
-        error.message.toLowerCase().includes("invalid")
-          ? "Incorrect admin password"
-          : error.message
-      );
+      throw error.message.toLowerCase().includes("invalid")
+        ? new AppError("Incorrect admin password")
+        : new AppError(friendlyError(error, "Sign-in failed. Please try again."));
     }
-    if (!data.session) throw new Error("Sign-in failed");
+    if (!data.session) throw new AppError("Sign-in failed. Please try again.");
     const u = userFromSession(data.session);
-    if (!u || u.role !== "admin") throw new Error("This account is not admin");
+    if (!u || u.role !== "admin")
+      throw new AppError("This account isn't registered as an admin.");
     // eslint-disable-next-line no-console
     console.log("[auth] signInAdmin built user from JWT — setting");
     set({ user: u });

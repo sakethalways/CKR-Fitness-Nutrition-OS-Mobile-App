@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { View, ScrollView, StatusBar, Alert } from "react-native";
 import { router } from "expo-router";
 import { MotiView } from "moti";
@@ -23,6 +23,7 @@ import { useLibrary } from "@/store/library";
 import { useData, selectAllActiveClients } from "@/store/data";
 import { useAuth } from "@/store/auth";
 import { useNotifications } from "@/store/notifications";
+import { friendlyError } from "@/lib/errors";
 import { seedMeals } from "@/data/meals";
 import { MealPlanTemplate } from "@/data/types";
 import { timeAgo, genderLabel } from "@/lib/format";
@@ -71,19 +72,24 @@ export default function Library() {
             haptics.success();
           } catch (e: any) {
             haptics.warning();
-            Alert.alert("Couldn't remove", e?.message ?? String(e));
+            Alert.alert("Couldn't remove", friendlyError(e));
           }
         }
       }
     ]);
   };
 
+  // Prevents a double-tap from creating two plans + two notifications.
+  const assigningRef = useRef(false);
+
   const onAssignTemplate = async (
     template: MealPlanTemplate,
     clientId: string
   ) => {
+    if (assigningRef.current) return;
     const client = clients.find((c) => c.id === clientId);
     if (!client) return;
+    assigningRef.current = true;
     try {
       const clientPlans = plans.filter((p) => p.clientId === clientId);
       const nextWeek =
@@ -122,7 +128,9 @@ export default function Library() {
       );
     } catch (e: any) {
       haptics.warning();
-      Alert.alert("Couldn't assign", e?.message ?? String(e));
+      Alert.alert("Couldn't assign", friendlyError(e));
+    } finally {
+      assigningRef.current = false;
     }
   };
 

@@ -11,6 +11,7 @@ import { useData } from "@/store/data";
 import { createTrainerFn } from "@/lib/edgeFunctions";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
+import { friendlyError } from "@/lib/errors";
 
 export default function NewTrainer() {
   const trainers = useData((s) => s.trainers);
@@ -63,7 +64,7 @@ export default function NewTrainer() {
               );
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't create trainer", e?.message ?? String(e));
+              Alert.alert("Couldn't create trainer", friendlyError(e));
             } finally {
               setBusy(false);
             }

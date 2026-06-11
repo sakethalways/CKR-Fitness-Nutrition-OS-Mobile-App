@@ -23,6 +23,7 @@ import { useNotifications } from "@/store/notifications";
 import { useData, selectClient, selectTrainer } from "@/store/data";
 import { Notification, NotificationKind } from "@/data/types";
 import { timeAgo } from "@/lib/format";
+import { friendlyError } from "@/lib/errors";
 import { colors } from "@/theme/tokens";
 import * as haptics from "@/lib/haptics";
 import { routeForNotification } from "@/lib/notificationRouting";
@@ -121,7 +122,7 @@ export default function Notifications() {
               );
             } catch (e: any) {
               haptics.warning();
-              Alert.alert("Couldn't delete", e?.message ?? String(e));
+              Alert.alert("Couldn't delete", friendlyError(e));
             }
           }
         }
@@ -307,12 +308,16 @@ function NotificationCard({
       notification.kind === "plan_change_request" ||
       notification.kind === "client_critical");
 
-  const trainerName = notification.payload.trainerId
-    ? selectTrainer(notification.payload.trainerId)?.name
-    : undefined;
-  const clientName = notification.payload.clientId
-    ? selectClient(notification.payload.clientId)?.name
-    : undefined;
+  // If the payload references an entity that has since been deleted, show
+  // "removed" rather than silently dropping the badge — so the admin knows the
+  // notification points at something that no longer exists.
+  const clientLabel = notification.payload.clientId
+    ? selectClient(notification.payload.clientId)?.name ?? "removed"
+    : null;
+  const trainerLabel = notification.payload.trainerId
+    ? selectTrainer(notification.payload.trainerId)?.name?.split(" ")[0] ??
+      "removed"
+    : null;
 
   return (
     <MotiView
@@ -363,27 +368,27 @@ function NotificationCard({
             <Text variant="caption" className="text-ink-2 mt-0.5">
               {notification.body}
             </Text>
-            {trainerName || clientName ? (
+            {trainerLabel || clientLabel ? (
               <View className="flex-row mt-1.5" style={{ gap: 6 }}>
-                {clientName ? (
+                {clientLabel ? (
                   <View className="px-1.5 py-0.5 rounded-md bg-white/[0.04] border border-line">
                     <Text
                       variant="caption"
                       className="text-ink-3"
                       style={{ fontSize: 10 }}
                     >
-                      Client · {clientName}
+                      Client · {clientLabel}
                     </Text>
                   </View>
                 ) : null}
-                {trainerName ? (
+                {trainerLabel ? (
                   <View className="px-1.5 py-0.5 rounded-md bg-white/[0.04] border border-line">
                     <Text
                       variant="caption"
                       className="text-ink-3"
                       style={{ fontSize: 10 }}
                     >
-                      Trainer · {trainerName.split(" ")[0]}
+                      Trainer · {trainerLabel}
                     </Text>
                   </View>
                 ) : null}
