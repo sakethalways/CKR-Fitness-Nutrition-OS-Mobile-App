@@ -29,6 +29,7 @@ import {
 } from "@/lib/notificationRouting";
 import { supabaseInitError, pingSupabase } from "@/lib/supabase";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { UpdatePrompt } from "@/components/UpdatePrompt";
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -228,6 +229,8 @@ export default function RootLayout() {
               animationDuration: 220
             }}
           />
+          {/* OTA update popup — "New features available → Update now". */}
+          <UpdatePrompt />
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </ErrorBoundary>
