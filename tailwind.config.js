@@ -9,10 +9,13 @@ module.exports = {
         surface: "#14161B",
         elevated: "#1C1F26",
         sunken: "#070809",
+        // "lime" now holds the CKR brand ORANGE (class names kept stable so
+        // every bg-lime / text-lime usage re-skins without code changes).
+        // ROLLBACK to old lime: DEFAULT #C6F432, dim #9FCC1A, glow #D8FF5C.
         lime: {
-          DEFAULT: "#C6F432",
-          dim: "#9FCC1A",
-          glow: "#D8FF5C"
+          DEFAULT: "#FE7F0B",
+          dim: "#D96A05",
+          glow: "#FFA94D"
         },
         ink: {
           DEFAULT: "#FFFFFF",

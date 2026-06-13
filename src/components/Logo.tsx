@@ -24,7 +24,7 @@ export function Logo({ size = 56, animate = true, rounded = true }: Props) {
           borderRadius: radius,
           overflow: "hidden",
           backgroundColor: "#000",
-          shadowColor: "#C6F432",
+          shadowColor: "#FE7F0B",
           shadowOpacity: 0.25,
           shadowRadius: 24,
           shadowOffset: { width: 0, height: 0 }

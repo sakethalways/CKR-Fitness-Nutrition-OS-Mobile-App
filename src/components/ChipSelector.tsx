@@ -48,8 +48,8 @@ export function ChipSelector<T extends string>({
           >
             <MotiView
               animate={{
-                backgroundColor: active ? "rgba(198,244,50,0.18)" : "rgba(255,255,255,0.04)",
-                borderColor: active ? "#C6F432" : "rgba(255,255,255,0.10)"
+                backgroundColor: active ? "rgba(254,127,11,0.18)" : "rgba(255,255,255,0.04)",
+                borderColor: active ? "#FE7F0B" : "rgba(255,255,255,0.10)"
               }}
               transition={{ type: "timing", duration: 90 }}
               className="flex-row items-center rounded-full border px-3 py-2"
@@ -65,7 +65,7 @@ export function ChipSelector<T extends string>({
               <Text
                 variant="bodyMedium"
                 style={{
-                  color: active ? "#D8FF5C" : "#94A3B8",
+                  color: active ? "#FFA94D" : "#94A3B8",
                   fontSize: 13,
                   fontFamily: active ? "Inter_600SemiBold" : "Inter_500Medium"
                 }}

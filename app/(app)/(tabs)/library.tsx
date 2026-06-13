@@ -483,7 +483,7 @@ function TemplatePreview({
                       <Text
                         tabular
                         style={{
-                          color: "#D8FF5C",
+                          color: "#FFA94D",
                           fontFamily: "Inter_700Bold",
                           fontSize: 15
                         }}

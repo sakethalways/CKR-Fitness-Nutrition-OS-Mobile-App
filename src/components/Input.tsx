@@ -38,7 +38,7 @@ export function Input({
             : focused
             ? colors.lime
             : "rgba(255,255,255,0.14)",
-          backgroundColor: focused ? "rgba(198,244,50,0.04)" : colors.surface
+          backgroundColor: focused ? "rgba(254,127,11,0.04)" : colors.surface
         }}
         transition={{ type: "timing", duration: 120 }}
         className="rounded-xl border flex-row items-center px-4 h-12"

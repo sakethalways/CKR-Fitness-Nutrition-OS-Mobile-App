@@ -32,7 +32,7 @@ export function MacroBar({ protein, carbs, fat }: Props) {
         <MotiView
           animate={{ width: `${cPct}%` as any }}
           transition={{ type: "spring", damping: 18, stiffness: 160 }}
-          style={{ height: "100%", backgroundColor: "#C6F432" }}
+          style={{ height: "100%", backgroundColor: "#FE7F0B" }}
         />
         <MotiView
           animate={{ width: `${fPct}%` as any }}
@@ -42,7 +42,7 @@ export function MacroBar({ protein, carbs, fat }: Props) {
       </View>
       <View className="flex-row justify-between mt-3">
         <Legend color="#60A5FA" label="Protein" value={`${protein}g`} pct={pPct} />
-        <Legend color="#C6F432" label="Carbs" value={`${carbs}g`} pct={cPct} />
+        <Legend color="#FE7F0B" label="Carbs" value={`${carbs}g`} pct={cPct} />
         <Legend color="#FBBF24" label="Fat" value={`${fat}g`} pct={fPct} />
       </View>
     </View>

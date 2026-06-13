@@ -46,9 +46,9 @@ export function Toggle({ value, onChange, size = "md" }: Props) {
           width: w,
           height: h,
           borderRadius: h / 2,
-          backgroundColor: value ? "#C6F432" : "rgba(255,255,255,0.10)",
+          backgroundColor: value ? "#FE7F0B" : "rgba(255,255,255,0.10)",
           borderWidth: 1,
-          borderColor: value ? "#C6F432" : "rgba(255,255,255,0.14)"
+          borderColor: value ? "#FE7F0B" : "rgba(255,255,255,0.14)"
         }}
       >
         <Animated.View

@@ -165,7 +165,7 @@ export default function Generate() {
             >
               <View className="rounded-2xl border border-lime/30 bg-lime/10 overflow-hidden">
                 <LinearGradient
-                  colors={["rgba(198,244,50,0.18)", "rgba(198,244,50,0.02)"]}
+                  colors={["rgba(254,127,11,0.18)", "rgba(254,127,11,0.02)"]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={{
@@ -190,7 +190,7 @@ export default function Generate() {
                         fontSize: 38,
                         lineHeight: 44,
                         letterSpacing: -1,
-                        color: "#D8FF5C",
+                        color: "#FFA94D",
                         fontFamily: "Inter_700Bold"
                       }}
                     />
@@ -397,7 +397,7 @@ function CalcRow({
           style={{
             fontFamily: "Inter_700Bold",
             fontSize: 17,
-            color: accent ? "#D8FF5C" : "#FFFFFF",
+            color: accent ? "#FFA94D" : "#FFFFFF",
             letterSpacing: -0.3
           }}
         >

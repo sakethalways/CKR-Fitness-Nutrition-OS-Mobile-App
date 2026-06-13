@@ -406,7 +406,7 @@ function HeroStat({
       className="rounded-2xl border border-lime/30 overflow-hidden"
     >
       <LinearGradient
-        colors={["rgba(198,244,50,0.18)", "rgba(198,244,50,0.03)"]}
+        colors={["rgba(254,127,11,0.18)", "rgba(254,127,11,0.03)"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
@@ -425,7 +425,7 @@ function HeroStat({
               fontSize: 36,
               lineHeight: 42,
               letterSpacing: -1,
-              color: "#D8FF5C",
+              color: "#FFA94D",
               fontFamily: "Inter_700Bold"
             }}
           />
@@ -515,7 +515,7 @@ function ActionTile({
 }) {
   const ringBg =
     tone === "lime"
-      ? "rgba(198,244,50,0.15)"
+      ? "rgba(254,127,11,0.15)"
       : tone === "info"
       ? "rgba(96,165,250,0.15)"
       : tone === "warn"

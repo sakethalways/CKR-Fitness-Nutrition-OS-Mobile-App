@@ -24,7 +24,7 @@
       "package": "com.ckrfitness.nutritionos",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0A0B0D"
+        "backgroundColor": "#FE7F0B"
       },
       "googleServicesFile": "./google-services.json"
     },
@@ -48,7 +48,7 @@
         "expo-notifications",
         {
           "icon": "./assets/notification-icon.png",
-          "color": "#C6F432"
+          "color": "#FE7F0B"
         }
       ]
     ],
@@ -56,6 +56,12 @@
       "typedRoutes": true
     },
     "extra": {
+      "whatsNew": [
+        "Fresh CKR orange look across the whole app",
+        "New CKR Fitness app icon",
+        "Smoother +/- calorie & protein controls",
+        "Update popup now shows what changed"
+      ],
       "eas": {
         "projectId": "9b6ece7b-c030-4e78-a8fb-e4e2e3cc749c"
       },

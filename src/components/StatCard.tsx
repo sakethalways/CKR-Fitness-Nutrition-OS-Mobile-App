@@ -52,7 +52,7 @@ export function StatCard({
             fontSize: 22,
             lineHeight: 28,
             letterSpacing: -0.4,
-            color: isLime ? "#D8FF5C" : "#FFFFFF"
+            color: isLime ? "#FFA94D" : "#FFFFFF"
           }}
         />
       </View>

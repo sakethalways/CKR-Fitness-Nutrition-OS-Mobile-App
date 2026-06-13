@@ -20,7 +20,7 @@ export function Avatar({
   imageUri
 }: Props) {
   const gradient: [string, string] =
-    tone === "lime" ? ["#C6F432", "#9FCC1A"] : ["#1F232B", "#15181E"];
+    tone === "lime" ? ["#FE7F0B", "#D96A05"] : ["#1F232B", "#15181E"];
   const textColor = tone === "lime" ? "#0A0B0D" : "#FFFFFF";
 
   const content = imageUri ? (
@@ -67,7 +67,7 @@ export function Avatar({
         height: size,
         borderRadius: size / 2,
         padding: ring ? 2 : 0,
-        backgroundColor: ring ? "rgba(198,244,50,0.35)" : "transparent",
+        backgroundColor: ring ? "rgba(254,127,11,0.35)" : "transparent",
         overflow: "hidden"
       }}
     >

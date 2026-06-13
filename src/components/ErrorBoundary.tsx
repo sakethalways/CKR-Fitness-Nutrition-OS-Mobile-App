@@ -66,7 +66,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <Pressable
             onPress={this.reset}
             style={{
-              backgroundColor: "#C6F432",
+              backgroundColor: "#FE7F0B",
               paddingHorizontal: 28,
               paddingVertical: 14,
               borderRadius: 14

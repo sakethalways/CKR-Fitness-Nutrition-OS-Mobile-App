@@ -30,8 +30,8 @@ export function StarRating({ value, size = 12, showNumber = true }: Props) {
           <Star
             key={i}
             size={size}
-            color={isFilled || isHalf ? "#C6F432" : "rgba(255,255,255,0.18)"}
-            fill={isFilled ? "#C6F432" : "transparent"}
+            color={isFilled || isHalf ? "#FE7F0B" : "rgba(255,255,255,0.18)"}
+            fill={isFilled ? "#FE7F0B" : "transparent"}
             strokeWidth={2}
             style={{ marginLeft: i > 0 ? 1.5 : 0 }}
           />

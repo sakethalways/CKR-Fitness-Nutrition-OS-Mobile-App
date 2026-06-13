@@ -20,7 +20,7 @@ Dark theme + lime-green accent. See `src/theme/tokens.ts` and `tailwind.config.j
 | bg           | `#0A0B0D`                   |
 | surface      | `#14161B`                   |
 | elevated     | `#1C1F26`                   |
-| lime (brand) | `#C6F432`                   |
+| lime (brand) | `#FE7F0B`                   |
 | ink / ink-2  | `#FFFFFF` / `#94A3B8`       |
 | line         | `rgba(255,255,255,0.08)`    |
 

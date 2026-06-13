@@ -56,7 +56,7 @@ export function SegmentedControl<T extends string>({
               width: itemWidth - 4,
               bottom: 4,
               borderRadius: 14,
-              backgroundColor: "#C6F432"
+              backgroundColor: "#FE7F0B"
             },
             indicatorStyle
           ]}

@@ -372,7 +372,7 @@ function PhoneInput({
           : focused
           ? colors.lime
           : "rgba(255,255,255,0.14)",
-        backgroundColor: focused ? "rgba(198,244,50,0.04)" : colors.surface
+        backgroundColor: focused ? "rgba(254,127,11,0.04)" : colors.surface
       }}
     >
       <Phone size={16} color={colors.ink2} strokeWidth={2} />

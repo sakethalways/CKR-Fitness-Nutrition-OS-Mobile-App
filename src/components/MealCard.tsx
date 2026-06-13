@@ -52,7 +52,7 @@ export function MealCard({ meal, delay = 0 }: Props) {
               style={{
                 fontFamily: "Inter_700Bold",
                 fontSize: 18,
-                color: "#D8FF5C",
+                color: "#FFA94D",
                 letterSpacing: -0.3
               }}
             >
@@ -81,7 +81,7 @@ export function MealCard({ meal, delay = 0 }: Props) {
         style={{ gap: 8 }}
       >
         <MacroPill label="P" value={Math.round(meal.proteinG)} color="#60A5FA" />
-        <MacroPill label="C" value={Math.round(meal.carbsG)} color="#C6F432" />
+        <MacroPill label="C" value={Math.round(meal.carbsG)} color="#FE7F0B" />
         <MacroPill label="F" value={Math.round(meal.fatG)} color="#FBBF24" />
       </View>
 

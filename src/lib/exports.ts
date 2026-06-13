@@ -92,26 +92,26 @@ export const buildPlanHTML = (
   .brand-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
   .brand-mark {
     width: 32px; height: 32px; border-radius: 8px;
-    background: #C6F432; color: #0A0B0D;
+    background: #FE7F0B; color: #0A0B0D;
     display: flex; align-items: center; justify-content: center;
     font-weight: 800; font-size: 18px; letter-spacing: -1px; flex-shrink: 0;
   }
-  .brand-name { font-size: 10px; letter-spacing: 1px; color: #C6F432; font-weight: 700; }
+  .brand-name { font-size: 10px; letter-spacing: 1px; color: #FE7F0B; font-weight: 700; }
   .brand-sub { font-size: 12px; color: #94A3B8; }
   h1 { font-size: 24px; letter-spacing: -0.5px; margin: 8px 0 2px; font-weight: 700; }
   .client-meta { font-size: 12px; color: #94A3B8; margin-bottom: 12px; line-height: 1.3; }
   .range-card {
     margin-bottom: 16px; padding: 12px 14px;
-    background: rgba(198,244,50,0.08);
-    border: 1px solid rgba(198,244,50,0.30);
+    background: rgba(254,127,11,0.08);
+    border: 1px solid rgba(254,127,11,0.30);
     border-radius: 12px;
   }
-  .range-label { font-size: 9px; letter-spacing: 1px; color: #C6F432; font-weight: 700; }
-  .range-value { font-size: 22px; font-weight: 700; color: #D8FF5C; letter-spacing: -0.3px; margin-top: 2px; }
+  .range-label { font-size: 9px; letter-spacing: 1px; color: #FE7F0B; font-weight: 700; }
+  .range-value { font-size: 22px; font-weight: 700; color: #FFA94D; letter-spacing: -0.3px; margin-top: 2px; }
   .range-hint { font-size: 11px; color: #94A3B8; margin-top: 4px; }
   .slot { margin-bottom: 14px; page-break-inside: avoid; }
-  .slot-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; border-bottom: 1px solid rgba(198,244,50,0.4); padding-bottom: 6px; }
-  .slot-name { font-size: 13px; letter-spacing: 1.5px; font-weight: 700; color: #C6F432; }
+  .slot-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; border-bottom: 1px solid rgba(254,127,11,0.4); padding-bottom: 6px; }
+  .slot-name { font-size: 13px; letter-spacing: 1.5px; font-weight: 700; color: #FE7F0B; }
   .slot-pick { font-size: 9px; letter-spacing: 0.5px; color: #64748B; }
   .meal {
     padding: 10px 12px; margin-bottom: 6px;
@@ -121,15 +121,15 @@ export const buildPlanHTML = (
   }
   .meal-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .meal-name { font-size: 13px; font-weight: 600; flex: 1; }
-  .meal-kcal { font-size: 16px; font-weight: 700; color: #D8FF5C; letter-spacing: -0.2px; white-space: nowrap; }
+  .meal-kcal { font-size: 16px; font-weight: 700; color: #FFA94D; letter-spacing: -0.2px; white-space: nowrap; }
   .meal-kcal .unit { font-size: 9px; color: #64748B; margin-left: 1px; font-weight: 500; }
   .meal-meta { margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; }
   .meal-qty { margin-top: 6px; font-size: 11px; color: #B6C2D1; line-height: 1.45; border-top: 0.5px dashed rgba(255,255,255,0.10); padding-top: 6px; }
-  .meal-code { font-size: 10px; font-weight: 700; color: #C6F432; letter-spacing: 0.3px; }
+  .meal-code { font-size: 10px; font-weight: 700; color: #FE7F0B; letter-spacing: 0.3px; }
   .reel-link { display: inline-block; margin-top: 7px; font-size: 10px; font-weight: 700; color: #E1306C; text-decoration: none; letter-spacing: 0.2px; }
   .macro { font-size: 10px; padding: 2px 6px; border-radius: 4px; font-weight: 600; }
   .macro.p { color: #60A5FA; background: rgba(96,165,250,0.12); }
-  .macro.c { color: #C6F432; background: rgba(198,244,50,0.12); }
+  .macro.c { color: #FE7F0B; background: rgba(254,127,11,0.12); }
   .macro.f { color: #FBBF24; background: rgba(251,191,36,0.12); }
   .footer { margin-top: 16px; padding-top: 12px; border-top: 0.5px solid rgba(255,255,255,0.06); font-size: 10px; color: #475569; text-align: center; }
 </style>

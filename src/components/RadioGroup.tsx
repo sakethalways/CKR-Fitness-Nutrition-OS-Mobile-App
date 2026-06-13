@@ -35,17 +35,17 @@ export function RadioGroup<T extends string>({
             <MotiView
               animate={{
                 backgroundColor: active
-                  ? "rgba(198,244,50,0.08)"
+                  ? "rgba(254,127,11,0.08)"
                   : "rgba(255,255,255,0.02)",
-                borderColor: active ? "#C6F432" : "rgba(255,255,255,0.08)"
+                borderColor: active ? "#FE7F0B" : "rgba(255,255,255,0.08)"
               }}
               transition={{ type: "timing", duration: 100 }}
               className="flex-row items-center rounded-2xl border px-4 py-3"
             >
               <MotiView
                 animate={{
-                  backgroundColor: active ? "#C6F432" : "transparent",
-                  borderColor: active ? "#C6F432" : "rgba(255,255,255,0.18)"
+                  backgroundColor: active ? "#FE7F0B" : "transparent",
+                  borderColor: active ? "#FE7F0B" : "rgba(255,255,255,0.18)"
                 }}
                 transition={{ type: "timing", duration: 100 }}
                 style={{

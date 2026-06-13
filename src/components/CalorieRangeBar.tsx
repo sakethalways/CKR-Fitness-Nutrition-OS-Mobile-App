@@ -41,7 +41,7 @@ export function CalorieRangeBar({ target, low, high }: Props) {
   return (
     <View className="rounded-2xl border border-lime/30 overflow-hidden">
       <LinearGradient
-        colors={["rgba(198,244,50,0.18)", "rgba(198,244,50,0.02)"]}
+        colors={["rgba(254,127,11,0.18)", "rgba(254,127,11,0.02)"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}
@@ -99,7 +99,7 @@ export function CalorieRangeBar({ target, low, high }: Props) {
               height: 6,
               left: `${lowPct}%`,
               width: `${Math.max(0, highPct - lowPct)}%`,
-              backgroundColor: "rgba(198,244,50,0.40)"
+              backgroundColor: "rgba(254,127,11,0.40)"
             }}
           />
           {/* range end ticks */}

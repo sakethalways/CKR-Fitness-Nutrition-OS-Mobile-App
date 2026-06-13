@@ -65,7 +65,7 @@ export const configurePushAsync = async (): Promise<{
         name: "Default",
         importance: N.AndroidImportance.HIGH,
         vibrationPattern: [0, 250, 250, 250],
-        lightColor: "#C6F432",
+        lightColor: "#FE7F0B",
         sound: "default"
       });
     } catch {

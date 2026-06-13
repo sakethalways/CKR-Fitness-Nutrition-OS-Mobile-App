@@ -1,11 +1,16 @@
+// Brand accent = CKR orange (sampled from the ckrfitness.com logo).
+// Token names kept as "lime" so every existing usage re-skins automatically.
+// ROLLBACK: previous palette was lime #C6F432 / dim #9FCC1A / glow #D8FF5C
+// and rgba(198,244,50,…) — swap these three values (and the same trio in
+// tailwind.config.js) back to restore the old look.
 export const colors = {
   bg: "#0A0B0D",
   surface: "#14161B",
   elevated: "#1C1F26",
   sunken: "#070809",
-  lime: "#C6F432",
-  limeDim: "#9FCC1A",
-  limeGlow: "#D8FF5C",
+  lime: "#FE7F0B",
+  limeDim: "#D96A05",
+  limeGlow: "#FFA94D",
   ink: "#FFFFFF",
   ink2: "#94A3B8",
   ink3: "#64748B",

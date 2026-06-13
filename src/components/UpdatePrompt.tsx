@@ -15,10 +15,28 @@ import { colors } from "@/theme/tokens";
  * Native changes (new libraries / app config) still ship as a new APK; this
  * only covers JS/UI/logic updates, which is the overwhelming majority.
  */
+// Pull the release notes out of the INCOMING update's manifest. The app config
+// (app.json "extra") is embedded into every published update, so whatever
+// `extra.whatsNew` said at `eas update` time is what users see here — edit
+// that list in app.json before each publish.
+const notesFromManifest = (manifest: unknown): string[] => {
+  const wn = (manifest as any)?.extra?.expoClient?.extra?.whatsNew;
+  if (Array.isArray(wn)) return wn.map(String).filter(Boolean).slice(0, 6);
+  if (typeof wn === "string" && wn.trim()) {
+    return wn
+      .split("\n")
+      .map((s) => s.replace(/^[-•*]\s*/, "").trim())
+      .filter(Boolean)
+      .slice(0, 6);
+  }
+  return [];
+};
+
 export function UpdatePrompt() {
   const [visible, setVisible] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [notes, setNotes] = useState<string[]>([]);
 
   useEffect(() => {
     // Updates are disabled in dev / Expo Go — checking there throws.
@@ -27,7 +45,10 @@ export function UpdatePrompt() {
     (async () => {
       try {
         const result = await Updates.checkForUpdateAsync();
-        if (!cancelled && result.isAvailable) setVisible(true);
+        if (!cancelled && result.isAvailable) {
+          setNotes(notesFromManifest(result.manifest));
+          setVisible(true);
+        }
       } catch {
         // Offline or server hiccup — stay quiet; we'll check next open.
       }
@@ -73,10 +94,27 @@ export function UpdatePrompt() {
           <Text variant="h2" className="text-ink mb-1">
             New features available
           </Text>
-          <Text variant="body" className="text-ink-2 mb-4">
+          <Text variant="body" className="text-ink-2 mb-3">
             A new version of the app is ready. Update takes a few seconds and
             the app will restart — your data is safe.
           </Text>
+
+          {notes.length > 0 ? (
+            <View className="rounded-xl bg-lime/10 border border-lime/20 px-3 py-2.5 mb-4">
+              <Text
+                variant="caption"
+                className="text-lime mb-1"
+                style={{ fontFamily: "Inter_600SemiBold", letterSpacing: 0.6 }}
+              >
+                WHAT'S NEW
+              </Text>
+              {notes.map((n, i) => (
+                <Text key={i} variant="caption" className="text-ink-2">
+                  {`•  ${n}`}
+                </Text>
+              ))}
+            </View>
+          ) : null}
 
           {failed ? (
             <Text variant="caption" className="text-danger mb-3">

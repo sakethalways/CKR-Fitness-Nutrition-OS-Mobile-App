@@ -29,7 +29,7 @@ export function RatingPill({ value, onChange }: Props) {
           tone === "danger"
             ? "#F87171"
             : tone === "lime"
-            ? "#C6F432"
+            ? "#FE7F0B"
             : tone === "warn"
             ? "#FBBF24"
             : "rgba(255,255,255,0.15)";

@@ -588,7 +588,7 @@ export default function ClientProfile() {
                         ? "rgba(248,113,113,0.15)"
                         : client.status === "On Hold"
                         ? "rgba(251,191,36,0.15)"
-                        : "rgba(198,244,50,0.15)"
+                        : "rgba(254,127,11,0.15)"
                   }}
                 >
                   {client.status === "Critical" ? (
@@ -905,7 +905,7 @@ export default function ClientProfile() {
                         ? "rgba(248,113,113,0.15)"
                         : s === "On Hold"
                         ? "rgba(251,191,36,0.15)"
-                        : "rgba(198,244,50,0.15)"
+                        : "rgba(254,127,11,0.15)"
                   }}
                 >
                   {s === "Critical" ? (
