@@ -33,25 +33,81 @@ export type MealFormData = {
   mealCode: string;
 };
 
+// Must stay in sync with CAL_BRACKET_VALUES in the Google Sheet script
+// (integrations/google-sheet-sync/Code.gs). The en-dash "–" and " kcal"
+// suffix must match the stored values exactly so synced meals map cleanly.
+const MAIN_BRACKETS = [
+  { value: "350–400 kcal", label: "350–400" },
+  { value: "400–450 kcal", label: "400–450" },
+  { value: "450–500 kcal", label: "450–500" },
+  { value: "500–550 kcal", label: "500–550" },
+  { value: "550–600 kcal", label: "550–600" },
+  { value: "600–650 kcal", label: "600–650" },
+  { value: "650–700 kcal", label: "650–700" },
+  { value: "700–750 kcal", label: "700–750" }
+];
+
 const CALORIE_BRACKETS = {
-  "Breakfast": [
-    { value: "350–400 kcal", label: "350–400" },
-    { value: "400–450 kcal", label: "400–450" },
-    { value: "450–500 kcal", label: "450–500" },
-    { value: "500–550 kcal", label: "500–550" }
-  ],
-  "Lunch / Dinner": [
-    { value: "350–400 kcal", label: "350–400" },
-    { value: "400–450 kcal", label: "400–450" },
-    { value: "450–500 kcal", label: "450–500" },
-    { value: "500–550 kcal", label: "500–550" }
-  ],
+  "Breakfast": MAIN_BRACKETS,
+  "Lunch / Dinner": MAIN_BRACKETS,
   "Snack": [
     { value: "150–200 kcal", label: "150–200" },
     { value: "200–250 kcal", label: "200–250" },
-    { value: "250–300 kcal", label: "250–300" }
+    { value: "250–300 kcal", label: "250–300" },
+    { value: "300–350 kcal", label: "300–350" }
   ]
 };
+
+// Single-select wrapping chip row. Used for the calorie bracket because there
+// are now up to eight options for main meals — too many to fit legibly in a
+// horizontal SegmentedControl, which would squash each label. Wrapping chips
+// stay readable and tap-friendly at any count.
+function BracketChips({
+  options,
+  value,
+  onChange
+}: {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <View className="flex-row flex-wrap" style={{ gap: 8 }}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            scaleTo={0.96}
+            haptic="light"
+          >
+            <View
+              className="rounded-full border px-3.5 py-2"
+              style={{
+                backgroundColor: active
+                  ? "rgba(254,127,11,0.18)"
+                  : "rgba(255,255,255,0.04)",
+                borderColor: active ? "#FE7F0B" : "rgba(255,255,255,0.10)"
+              }}
+            >
+              <Text
+                variant="bodyMedium"
+                style={{
+                  color: active ? "#FFA94D" : "#94A3B8",
+                  fontSize: 13,
+                  fontFamily: active ? "Inter_600SemiBold" : "Inter_500Medium"
+                }}
+              >
+                {o.label}
+              </Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
 
 const CLIENT_TAG_OPTIONS = [
   "Sweet Craving",
@@ -98,18 +154,34 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
       Partial<Record<keyof MealFormData, boolean>>
     >({});
 
-    const availableBrackets = useMemo(
-      () => CALORIE_BRACKETS[mealType] || [],
-      [mealType]
-    );
-
-    // Reset calBracket if mealType changes and current bracket not in new type
-    React.useEffect(() => {
-      const bracketValues = availableBrackets.map(b => b.value);
-      if (!bracketValues.includes(calBracket)) {
-        setCalBracket(availableBrackets[0]?.value || "350–400 kcal");
+    const availableBrackets = useMemo(() => {
+      const base = CALORIE_BRACKETS[mealType] || [];
+      // Preserve a bracket the canonical list doesn't know about — e.g. a value
+      // added in the Google Sheet but not yet mirrored here, or legacy data.
+      // Surfacing it as a selectable chip means opening such a meal to edit
+      // never silently drops or rewrites its bracket (which would corrupt the
+      // row on the next save and push the wrong value back to the Sheet).
+      if (calBracket && !base.some((b) => b.value === calBracket)) {
+        const label = calBracket.replace(/\s*kcal\s*$/i, "").trim() || calBracket;
+        return [...base, { value: calBracket, label }];
       }
-    }, [mealType, availableBrackets, calBracket]);
+      return base;
+    }, [mealType, calBracket]);
+
+    // Reset the bracket ONLY when the user actively switches the meal TYPE to
+    // one whose canonical brackets can't include the current value (e.g. a main
+    // meal → Snack). We deliberately do NOT reset on first load of a meal whose
+    // bracket is unknown — that value is preserved via availableBrackets above,
+    // so a synced higher-bracket meal stays intact instead of being clobbered.
+    const prevTypeRef = React.useRef(mealType);
+    React.useEffect(() => {
+      if (prevTypeRef.current === mealType) return;
+      prevTypeRef.current = mealType;
+      const canonical = CALORIE_BRACKETS[mealType] || [];
+      if (!canonical.some((b) => b.value === calBracket)) {
+        setCalBracket(canonical[0]?.value || "350–400 kcal");
+      }
+    }, [mealType, calBracket]);
 
     // Returns a list of human-readable problems (empty = valid).
     const validate = (): string[] => {
@@ -260,7 +332,7 @@ export const MealForm = React.forwardRef<any, MealFormProps>(
               <Text variant="caption" className="text-ink-3 mb-1">
                 Calorie Bracket
               </Text>
-              <SegmentedControl
+              <BracketChips
                 options={availableBrackets}
                 value={calBracket}
                 onChange={setCalBracket}
